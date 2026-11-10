@@ -1,0 +1,20 @@
+{
+  "name": "ai-native-dam",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The governance plane for AI-native assets, skills, generated systems, and distilled capabilities.",
+  "license": "MIT",
+  "engines": { "node": ">=22", "pnpm": ">=9" },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "compose:up": "docker compose up -d",
+    "compose:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
