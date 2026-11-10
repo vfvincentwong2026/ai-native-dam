@@ -1,0 +1,16 @@
+low:
+  description: Read-only or idempotent operations. Safe to retry.
+  requires_approval: false
+  auto_approve_scopes: [Suggest, Read, Edit]
+
+medium:
+  description: Reversible writes with an audit trail. May be approved by token.
+  requires_approval: true
+  approval_method: elicitation_or_token
+  auto_approve_scopes: []
+
+high:
+  description: Irreversible, external-facing, or cost-incurring. Human must confirm.
+  requires_approval: true
+  approval_method: elicitation_only
+  never_auto_approve: true
