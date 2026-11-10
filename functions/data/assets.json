@@ -1,0 +1,18 @@
+[
+  {
+    "id": "asset-0001",
+    "title": "Summer campaign hero image",
+    "mimeType": "image/jpeg",
+    "tags": ["summer", "campaign", "hero"],
+    "renditionUrl": "https://example.com/asset-0001.jpg",
+    "rightsStatus": "Cleared"
+  },
+  {
+    "id": "asset-0002",
+    "title": "Q3 product launch video",
+    "mimeType": "video/mp4",
+    "tags": ["q3", "launch", "product"],
+    "renditionUrl": "https://example.com/asset-0002.mp4",
+    "rightsStatus": "Restricted"
+  }
+]
