@@ -1,0 +1,40 @@
+gates:
+  create_asset:
+    risk: medium
+    method: elicitation_or_token
+    resource_key: "asset:create:{title}"
+
+  set_rights:
+    risk: medium
+    method: elicitation_or_token
+    resource_key: "asset:rights:{assetId}"
+
+  record_usage:
+    risk: medium
+    method: elicitation_or_token
+    resource_key: "asset:usage:{assetId}:{channel}"
+
+  apply_skill:
+    risk: medium
+    method: elicitation_or_token
+    resource_key: "skill:apply:{skillId}@{version}"
+
+  generate_system_spec:
+    risk: medium
+    method: elicitation_or_token
+    resource_key: "spec:generate:{businessDomain}"
+
+  submit_system_spec:
+    risk: high
+    method: elicitation_only
+    resource_key: "spec:submit:{specId}"
+
+  register_generated_system:
+    risk: high
+    method: elicitation_only
+    resource_key: "system:register:{specId}"
+
+  register_lora_adapter:
+    risk: high
+    method: elicitation_only
+    resource_key: "lora:register:{sourceSkillId}@{version}"
