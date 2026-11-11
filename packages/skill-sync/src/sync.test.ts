@@ -36,6 +36,14 @@ describe('SkillManifest', () => {
     expect(SkillManifest.safeParse({ name: 'ok-name', description: 'valid description', version: '1.0' }).success).toBe(false);
     expect(SkillManifest.safeParse({ name: 'Bad Name', description: 'valid description' }).success).toBe(false);
   });
+
+  it('accepts semver prerelease and build tags (e.g. 1.0.0-neutral)', () => {
+    expect(SkillManifest.safeParse({ name: 'ok-name', description: 'valid description', version: '1.0.0-neutral' }).success).toBe(true);
+    expect(SkillManifest.safeParse({ name: 'ok-name', description: 'valid description', version: '2.1.0-beta.1' }).success).toBe(true);
+    expect(SkillManifest.safeParse({ name: 'ok-name', description: 'valid description', version: '2.1.0+build.5' }).success).toBe(true);
+    expect(SkillManifest.safeParse({ name: 'ok-name', description: 'valid description', version: '1.0' }).success).toBe(false);
+    expect(SkillManifest.safeParse({ name: 'ok-name', description: 'valid description', version: 'v1.0.0' }).success).toBe(false);
+  });
 });
 
 describe('scanSkillFiles', () => {

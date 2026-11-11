@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/** Full semver incl. prerelease/build tags (e.g. 1.0.0-neutral, 2.1.0+build.5). */
+export const SEMVER_PATTERN =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/;
+
 export const SkillStatus = z.enum(['draft', 'pending_approval', 'approved', 'revoked']);
 export type SkillStatus = z.infer<typeof SkillStatus>;
 
@@ -11,7 +15,7 @@ export type SkillId = z.infer<typeof SkillId>;
 
 export const Skill = z.object({
   id: SkillId,
-  version: z.string().regex(/^\d+\.\d+\.\d+$/),
+  version: z.string().regex(SEMVER_PATTERN),
   name: z.string(),
   description: z.string(),
   domain: SkillDomain,
@@ -57,7 +61,7 @@ export type ApplySkillOutput = z.infer<typeof ApplySkillOutput>;
 
 export const RegisterSkillInput = z.object({
   id: SkillId,
-  version: z.string().regex(/^\d+\.\d+\.\d+$/),
+  version: z.string().regex(SEMVER_PATTERN),
   name: z.string().min(1),
   description: z.string().min(10),
   domain: SkillDomain.default('generic'),

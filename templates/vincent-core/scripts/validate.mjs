@@ -38,7 +38,7 @@ for (const file of walk(join(ROOT, 'skills'))) {
   const domain = field(content, 'domain') ?? 'generic';
   if (!name || !/^[a-z0-9][a-z0-9-]*$/.test(name)) errors.push(`${rel}: bad or missing name`);
   if (!description || description.length < 10) errors.push(`${rel}: description missing or too short`);
-  if (!/^\d+\.\d+\.\d+$/.test(version)) errors.push(`${rel}: version must be semver`);
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(version)) errors.push(`${rel}: version must be semver`);
   if (!DOMAINS.includes(domain)) errors.push(`${rel}: unknown domain "${domain}"`);
 }
 

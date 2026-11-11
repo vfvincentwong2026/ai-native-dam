@@ -319,7 +319,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       type: 'object',
       properties: {
         id: { type: 'string', pattern: '^[a-z0-9][a-z0-9:_-]*$', description: 'Namespaced slug, e.g. drama:script-split' },
-        version: { type: 'string', pattern: '^\\d+\\.\\d+\\.\\d+$' },
+        version: { type: 'string', pattern: '^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$' },
         name: { type: 'string' },
         description: { type: 'string', minLength: 10 },
         domain: { type: 'string', enum: ['ecommerce', 'short_drama', 'retail', 'content', 'operations', 'generic'], default: 'generic' },

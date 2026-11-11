@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SkillDomain } from '@ai-native-dam/shared-schema';
+import { SkillDomain, SEMVER_PATTERN } from '@ai-native-dam/shared-schema';
 
 /**
  * Industrial SKILL.md frontmatter spec. `name` and `description` follow the
@@ -11,7 +11,7 @@ export const SkillManifest = z.object({
   name: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
   /** Must state the trigger conditions ("Use when ..."). */
   description: z.string().min(10),
-  version: z.string().regex(/^\d+\.\d+\.\d+$/).default('0.1.0'),
+  version: z.string().regex(SEMVER_PATTERN).default('0.1.0'),
   domain: SkillDomain.default('generic'),
   risk: z.enum(['low', 'medium', 'high']).default('low'),
   author: z.string().optional(),
