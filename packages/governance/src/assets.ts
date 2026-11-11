@@ -16,21 +16,22 @@ export function searchAssets(
   input: SearchAssetsInput,
 ): SearchAssetsOutput {
   const q = input.query.toLowerCase();
-  const filtered = pool
+  const matched = pool
     .filter(({ asset }) => {
       const haystack = `${asset.title} ${asset.tags.join(' ')}`.toLowerCase();
       return haystack.includes(q);
     })
-    .filter(({ rights }) => {
+    .filter(({ asset, rights }) => {
       if (!input.channel) return true;
       return checkUse(rights, {
-        assetId: '',
+        assetId: asset.id,
         channel: input.channel,
         territory: 'CN',
       }).allowed;
-    })
-    .slice(0, input.limit)
-    .map(({ asset }) => asset);
+    });
 
-  return { assets: filtered, total: filtered.length };
+  return {
+    assets: matched.slice(0, input.limit).map(({ asset }) => asset),
+    total: matched.length,
+  };
 }

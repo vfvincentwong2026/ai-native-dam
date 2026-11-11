@@ -6,6 +6,18 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `packages/shared-schema/tsconfig.json` contained `package.json` content, breaking
+  `tsc` for the whole workspace; replaced with a proper project config.
+- Root `typecheck` now builds project references first, so CI typecheck passes on
+  a clean checkout.
+- `functions/mcp.js` `check_use` now follows the canonical contract in
+  `docs/mcp-tools.md` (`asset_id` in, `replacement_id` out).
+- `searchAssets` now reports `total` as the pre-pagination match count and passes
+  the real `assetId` into `checkUse`.
+- Added `pnpm-lock.yaml` so `pnpm install --frozen-lockfile` works in CI.
+
 ### Added
 
 - `README.md` governance-plane positioning (media, skills, systems, knowledge, distilled artifacts).

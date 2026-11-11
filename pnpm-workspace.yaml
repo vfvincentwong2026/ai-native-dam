@@ -1,3 +1,5 @@
 packages:
   - 'packages/*'
   - 'runtime/*'
+allowBuilds:
+  esbuild: true

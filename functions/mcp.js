@@ -26,11 +26,11 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        assetId: { type: 'string' },
+        asset_id: { type: 'string' },
         channel: { type: 'string' },
         territory: { type: 'string', default: 'CN' }
       },
-      required: ['assetId', 'channel']
+      required: ['asset_id', 'channel']
     }
   }
 ];
@@ -75,12 +75,12 @@ function handleToolCall(params) {
   }
 
   if (name === 'check_use') {
-    const asset = assets.find(a => a.id === args.assetId);
+    const asset = assets.find(a => a.id === args.asset_id);
     if (!asset) {
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify({ allowed: false, reason: 'asset_not_found', replacementId: null })
+          text: JSON.stringify({ allowed: false, reason: 'asset_not_found', replacement_id: null })
         }]
       };
     }
@@ -91,7 +91,7 @@ function handleToolCall(params) {
         text: JSON.stringify({
           allowed,
           reason: allowed ? 'ok' : `rights_${asset.rightsStatus.toLowerCase()}`,
-          replacementId: null
+          replacement_id: null
         })
       }]
     };
