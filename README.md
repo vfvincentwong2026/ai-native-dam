@@ -369,7 +369,7 @@ Released under the [MIT License](./LICENSE).
 - **[Artbucket](https://github.com/pwnera/artbucket)** — self-hosted DAM and brand manager; assets, guidelines, rights, releases, and provenance in one system.
 - **[mcp-dam](https://github.com/zavora-ai/mcp-dam)** — governance gating model for MCP tool contracts (`risk_level`, `writes_allowed = gated`).
 - **[OpenMontage](https://github.com/calesthio/OpenMontage)** — agentic video production pipeline.
-- **[Mangaba AI](https://github.com/)** — multi-agent orchestration with native MCP + A2A.
+- **Mangaba AI** — multi-agent orchestration with native MCP + A2A.
 - **[OpenSquilla](https://opensquilla.ai/)** — SquillaRouter, local C0–C3 model tiering.
 - **[mcp-approval](https://www.npmjs.com/package/mcp-approval)** — human-in-the-loop gate with `elicitation` + token fallback.
 - **[tinker-ai-skill](https://github.com/drost-ai/tinker-ai-skill)** — distill agent sessions into LoRA adapters, pause-before-train.
