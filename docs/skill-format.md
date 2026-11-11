@@ -22,7 +22,7 @@ Every skill is a directory containing `SKILL.md` with YAML frontmatter.
 | `name` | ✅ | lowercase slug `^[a-z0-9][a-z0-9-]*$`, unique within its domain |
 | `description` | ✅ | ≥ 10 chars, **must state trigger conditions** ("Use when …") |
 | `version` | — | semver, default `0.1.0`; a bump creates a new registry entry |
-| `domain` | — | `ecommerce` · `short_drama` · `retail` · `content` · `generic` (default) |
+| `domain` | — | `ecommerce` · `short_drama` · `retail` · `content` · `operations` · `generic` (default) |
 | `risk` | — | `low` (default) · `medium` · `high`; informs the approval gate |
 | `tags` | — | string array |
 | `author` | — | free text |

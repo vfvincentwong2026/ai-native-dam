@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const SkillStatus = z.enum(['draft', 'pending_approval', 'approved', 'revoked']);
 export type SkillStatus = z.infer<typeof SkillStatus>;
 
-export const SkillDomain = z.enum(['ecommerce', 'short_drama', 'retail', 'content', 'generic']);
+export const SkillDomain = z.enum(['ecommerce', 'short_drama', 'retail', 'content', 'operations', 'generic']);
 export type SkillDomain = z.infer<typeof SkillDomain>;
 
 export const SkillId = z.string().regex(/^[a-z0-9][a-z0-9:_-]*$/);

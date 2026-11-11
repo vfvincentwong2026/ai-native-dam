@@ -9,7 +9,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const DOMAINS = ['ecommerce', 'short_drama', 'retail', 'content', 'generic'];
+const DOMAINS = ['ecommerce', 'short_drama', 'retail', 'content', 'operations', 'generic'];
 const errors = [];
 
 function* walk(dir) {

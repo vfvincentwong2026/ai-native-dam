@@ -281,7 +281,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        domain: { type: 'string', enum: ['ecommerce', 'short_drama', 'retail', 'content', 'generic'] },
+        domain: { type: 'string', enum: ['ecommerce', 'short_drama', 'retail', 'content', 'operations', 'generic'] },
         query: { type: 'string' },
         only_approved: { type: 'boolean', default: true },
       },
@@ -310,7 +310,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         version: { type: 'string', pattern: '^\\d+\\.\\d+\\.\\d+$' },
         name: { type: 'string' },
         description: { type: 'string', minLength: 10 },
-        domain: { type: 'string', enum: ['ecommerce', 'short_drama', 'retail', 'content', 'generic'], default: 'generic' },
+        domain: { type: 'string', enum: ['ecommerce', 'short_drama', 'retail', 'content', 'operations', 'generic'], default: 'generic' },
         source_repo: { type: ['string', 'null'], format: 'uri' },
         source_path: { type: ['string', 'null'] },
         source_commit: { type: ['string', 'null'], description: 'Commit hash the version is pinned to' },
