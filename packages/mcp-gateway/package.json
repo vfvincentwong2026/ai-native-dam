@@ -1,0 +1,25 @@
+{
+  "name": "@ai-native-dam/mcp-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "start": "tsc -b && node dist/cli.js"
+  },
+  "dependencies": {
+    "@ai-native-dam/governance": "workspace:*",
+    "@ai-native-dam/shared-schema": "workspace:*",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

@@ -38,3 +38,8 @@ export const WriteKnowledgeInput = z.object({
   sourceAssetIds: z.array(z.string()).default([]),
 });
 export type WriteKnowledgeInput = z.infer<typeof WriteKnowledgeInput>;
+
+export const WriteKnowledgeOutput = z.object({
+  entry: KnowledgeEntry,
+});
+export type WriteKnowledgeOutput = z.infer<typeof WriteKnowledgeOutput>;

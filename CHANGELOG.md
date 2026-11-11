@@ -20,6 +20,18 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `packages/mcp-gateway`: MCP Gateway over Streamable HTTP — bearer auth,
+  scope-based RBAC (`Suggest` / `Read` / `Edit`), two-call confirmation-token
+  approval gate, snake_case wire contract translation, `/health`, and 8 live
+  tools (`search_assets`, `check_use`, `create_asset`, `set_rights`,
+  `record_usage`, `search_knowledge`, `write_knowledge`, `search_skills`).
+- `shared-schema`: `CreateAssetInput`, `SetRightsInput`, `RecordUsageInput`,
+  `UsageRecord`, `WriteKnowledgeOutput`, `RequestDistillationOutput`,
+  `LoraArtifact`, `RegisterLoraAdapterOutput`; registry now includes
+  `create_asset` / `set_rights` / `record_usage`.
+- Contract-integrity tests for the tool registry, `searchAssets` tests, and 24
+  gateway tests (approval unit + HTTP integration).
+
 - `README.md` governance-plane positioning (media, skills, systems, knowledge, distilled artifacts).
 - `docs/architecture.md`, `docs/mcp-tools.md`, `docs/a2a-contract.md`.
 - `packages/shared-schema` with Zod types for all MCP tool contracts.

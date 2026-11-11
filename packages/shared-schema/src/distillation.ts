@@ -36,3 +36,25 @@ export const RegisterLoraAdapterInput = z.object({
   metrics: z.record(z.number()).default({}),
 });
 export type RegisterLoraAdapterInput = z.infer<typeof RegisterLoraAdapterInput>;
+
+export const RequestDistillationOutput = z.object({
+  request: DistillationRequest,
+});
+export type RequestDistillationOutput = z.infer<typeof RequestDistillationOutput>;
+
+export const LoraArtifact = z.object({
+  id: z.string(),
+  sourceSkillId: z.string(),
+  version: z.string(),
+  adapterUri: z.string().url(),
+  trainingDataUri: z.string().url(),
+  baseModel: z.string(),
+  metrics: z.record(z.number()),
+  createdAt: z.string().datetime(),
+});
+export type LoraArtifact = z.infer<typeof LoraArtifact>;
+
+export const RegisterLoraAdapterOutput = z.object({
+  artifact: LoraArtifact,
+});
+export type RegisterLoraAdapterOutput = z.infer<typeof RegisterLoraAdapterOutput>;

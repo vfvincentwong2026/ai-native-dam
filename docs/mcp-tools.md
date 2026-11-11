@@ -148,7 +148,7 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
 
 | Tool | Risk | Gated | Status |
 |---|---|---|---|
-| `search_skills` | low | — | planned |
+| `search_skills` | low | — | implemented (gateway, Phase 1) |
 | `apply_skill` | medium | ✅ | planned |
 | `generate_system_spec` | medium | ✅ | planned |
 | `submit_system_spec` | high | ✅ | planned |
@@ -162,6 +162,28 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
 |---|---|---|---|
 | `request_distillation` | medium | ✅ | planned |
 | `register_lora_adapter` | high | ✅ | planned |
+
+---
+
+## Implementation Status (Phase 1)
+
+Implemented in `packages/mcp-gateway` over Streamable HTTP, in-memory state:
+
+| Tool | Status |
+|---|---|
+| `search_assets` | ✅ implemented |
+| `check_use` | ✅ implemented |
+| `create_asset` | ✅ implemented (gated) |
+| `set_rights` | ✅ implemented (gated) |
+| `record_usage` | ✅ implemented (gated, rights-rejection enforced) |
+| `search_knowledge` | ✅ implemented |
+| `write_knowledge` | ✅ implemented (gated, lands as `pending_approval`) |
+| `search_skills` | ✅ implemented |
+
+The gateway authenticates via bearer token (`DAM_TOKENS`), filters `tools/list`
+by scope (`Suggest` / `Read` / `Edit`), and routes every gated tool through the
+two-call confirmation-token approval flow described below.
+
 
 ---
 

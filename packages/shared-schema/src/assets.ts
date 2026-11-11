@@ -55,3 +55,59 @@ export const CheckUseOutput = z.object({
   replacementId: z.string().nullable(),
 });
 export type CheckUseOutput = z.infer<typeof CheckUseOutput>;
+
+export const CreateAssetInput = z.object({
+  title: z.string().min(1),
+  mimeType: z.string().min(1),
+  sizeBytes: z.number().int().nonnegative().default(0),
+  renditionUrl: z.string().url(),
+  tags: z.array(z.string()).default([]),
+  license: z.string().min(1),
+});
+export type CreateAssetInput = z.infer<typeof CreateAssetInput>;
+
+export const CreateAssetOutput = z.object({
+  asset: Asset,
+});
+export type CreateAssetOutput = z.infer<typeof CreateAssetOutput>;
+
+export const SetRightsInput = z.object({
+  assetId: z.string().min(1),
+  license: z.string().min(1),
+  territories: z.array(Territory).min(1),
+  channels: z.array(Channel).min(1),
+  embargoUntil: z.string().datetime().nullable().default(null),
+  expiresAt: z.string().datetime().nullable().default(null),
+  status: RightsStatus.default('Pending'),
+});
+export type SetRightsInput = z.infer<typeof SetRightsInput>;
+
+export const SetRightsOutput = z.object({
+  rights: RightsRecord,
+});
+export type SetRightsOutput = z.infer<typeof SetRightsOutput>;
+
+export const UsageRecord = z.object({
+  id: z.string(),
+  assetId: z.string(),
+  channel: Channel,
+  territory: Territory.optional(),
+  context: z.string().optional(),
+  recordedAt: z.string().datetime(),
+  recordedBy: z.string(),
+});
+export type UsageRecord = z.infer<typeof UsageRecord>;
+
+export const RecordUsageInput = z.object({
+  assetId: z.string().min(1),
+  channel: Channel,
+  territory: Territory.optional(),
+  context: z.string().optional(),
+});
+export type RecordUsageInput = z.infer<typeof RecordUsageInput>;
+
+export const RecordUsageOutput = z.object({
+  usageId: z.string(),
+  recorded: z.literal(true),
+});
+export type RecordUsageOutput = z.infer<typeof RecordUsageOutput>;

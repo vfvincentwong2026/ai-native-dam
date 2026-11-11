@@ -152,6 +152,30 @@ flowchart TB
 - Node.js ≥ 22 (for governance development)
 - Python ≥ 3.11 (for runtime and connectors)
 
+### 0. Run the in-repo MCP Gateway (no Docker required)
+
+The gateway in `packages/mcp-gateway` serves the Phase 1 tool surface over
+Streamable HTTP with bearer auth, scope-based RBAC, and the two-call
+confirmation-token approval gate. It runs entirely in memory, so it works
+without Postgres:
+
+```bash
+pnpm install
+pnpm --filter @ai-native-dam/mcp-gateway start
+# → MCP endpoint on http://localhost:8080/mcp (dev token: "dev-token")
+```
+
+```bash
+curl -s http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer dev-token" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+Gated tools (e.g. `record_usage`) answer the first call with a
+`confirmation_token`; repeat the identical call with `"_confirmation": "<token>"`
+to execute the write.
+
 ### 1. Boot the governance core (Artbucket)
 
 ```bash

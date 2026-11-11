@@ -3,6 +3,12 @@ import {
   SearchAssetsOutput,
   CheckUseInput,
   CheckUseOutput,
+  CreateAssetInput,
+  CreateAssetOutput,
+  SetRightsInput,
+  SetRightsOutput,
+  RecordUsageInput,
+  RecordUsageOutput,
 } from './assets.js';
 import {
   SearchSkillsInput,
@@ -18,10 +24,13 @@ import {
   SearchKnowledgeInput,
   SearchKnowledgeOutput,
   WriteKnowledgeInput,
+  WriteKnowledgeOutput,
 } from './knowledge.js';
 import {
   RequestDistillationInput,
+  RequestDistillationOutput,
   RegisterLoraAdapterInput,
+  RegisterLoraAdapterOutput,
 } from './distillation.js';
 import { RiskLevel } from './approval.js';
 
@@ -55,6 +64,33 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     scopes: ['Suggest', 'Read', 'Edit'],
     input: CheckUseInput,
     output: CheckUseOutput,
+  },
+  {
+    name: 'create_asset',
+    description: 'Ingest an asset with provenance; requires rights declaration.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    input: CreateAssetInput,
+    output: CreateAssetOutput,
+  },
+  {
+    name: 'set_rights',
+    description: 'Attach license, territory, embargo, and channel scope to an asset.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    input: SetRightsInput,
+    output: SetRightsOutput,
+  },
+  {
+    name: 'record_usage',
+    description: 'Log a use; rejected if rights are not Cleared for the target.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    input: RecordUsageInput,
+    output: RecordUsageOutput,
   },
   {
     name: 'search_skills',
@@ -99,7 +135,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     gated: true,
     scopes: ['Edit'],
     input: WriteKnowledgeInput,
-    output: SearchKnowledgeOutput,
+    output: WriteKnowledgeOutput,
   },
   {
     name: 'request_distillation',
@@ -108,7 +144,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     gated: true,
     scopes: ['Edit'],
     input: RequestDistillationInput,
-    output: SearchKnowledgeOutput,
+    output: RequestDistillationOutput,
   },
   {
     name: 'register_lora_adapter',
@@ -117,7 +153,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     gated: true,
     scopes: ['Edit'],
     input: RegisterLoraAdapterInput,
-    output: SearchKnowledgeOutput,
+    output: RegisterLoraAdapterOutput,
   },
 ];
 
