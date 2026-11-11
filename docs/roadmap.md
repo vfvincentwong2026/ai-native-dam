@@ -18,5 +18,5 @@
 - [x] `infra/migrations/0001_init.sql` covers assets, rights, skills, specs, knowledge, distillation, approval
 - [x] `index.html` + Cloudflare Pages deployment
 - [x] `functions/mcp.js` read-only showcase MCP endpoint
-- [ ] CI green on `main`
+- [x] CI green on `main`
 - [ ] Artbucket + MCP Gateway running locally
