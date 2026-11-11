@@ -41,20 +41,34 @@ export const SearchAssetsOutput = z.object({
 });
 export type SearchAssetsOutput = z.infer<typeof SearchAssetsOutput>;
 
-export const CheckUseInput = z.object({
+export const CheckUsageRightsInput = z.object({
   assetId: z.string(),
   channel: Channel,
   territory: Territory.default('CN'),
   at: z.string().datetime().optional(),
 });
-export type CheckUseInput = z.infer<typeof CheckUseInput>;
+export type CheckUsageRightsInput = z.infer<typeof CheckUsageRightsInput>;
 
-export const CheckUseOutput = z.object({
+export const CheckUsageRightsOutput = z.object({
   allowed: z.boolean(),
   reason: z.string(),
   replacementId: z.string().nullable(),
 });
-export type CheckUseOutput = z.infer<typeof CheckUseOutput>;
+export type CheckUsageRightsOutput = z.infer<typeof CheckUsageRightsOutput>;
+
+/**
+ * @deprecated Use {@link CheckUsageRightsInput}. The `check_use` tool was
+ * renamed to `check_usage_rights`; the gateway still maps the old name.
+ */
+export const CheckUseInput = CheckUsageRightsInput;
+/** @deprecated Use {@link CheckUsageRightsInput}. */
+export type CheckUseInput = CheckUsageRightsInput;
+/**
+ * @deprecated Use {@link CheckUsageRightsOutput}.
+ */
+export const CheckUseOutput = CheckUsageRightsOutput;
+/** @deprecated Use {@link CheckUsageRightsOutput}. */
+export type CheckUseOutput = CheckUsageRightsOutput;
 
 export const CreateAssetInput = z.object({
   title: z.string().min(1),

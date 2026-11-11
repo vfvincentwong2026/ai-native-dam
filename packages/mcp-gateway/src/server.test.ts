@@ -113,7 +113,7 @@ describe('RBAC', () => {
   it('edit-scoped principals see the full surface', async () => {
     const { body } = await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, 'edit-token');
     const names = body.result.tools.map((t: { name: string }) => t.name);
-    expect(names).toEqual(expect.arrayContaining(['search_assets', 'check_use', 'create_asset', 'set_rights', 'record_usage', 'search_knowledge', 'write_knowledge', 'search_skills']));
+    expect(names).toEqual(expect.arrayContaining(['search_assets', 'check_usage_rights', 'create_asset', 'set_rights', 'record_usage', 'search_knowledge', 'write_knowledge', 'search_skills']));
   });
 
   it('blocks an edit-only tool for a read principal even when called directly', async () => {
@@ -131,19 +131,34 @@ describe('read tools', () => {
     expect(out.assets[0].rendition_url).toBe('https://example.com/asset-0001.jpg');
   });
 
-  it('check_use allows a licensed channel and denies an unlicensed one', async () => {
-    const ok = unwrapToolJson({ body: (await callTool('check_use', { asset_id: 'asset-0001', channel: 'xiaohongshu' }, 'read-token')).body });
+  it('check_usage_rights allows a licensed channel and denies an unlicensed one', async () => {
+    const ok = unwrapToolJson({ body: (await callTool('check_usage_rights', { asset_id: 'asset-0001', channel: 'xiaohongshu' }, 'read-token')).body });
     expect(ok.allowed).toBe(true);
 
-    const no = unwrapToolJson({ body: (await callTool('check_use', { asset_id: 'asset-0001', channel: 'x' }, 'read-token')).body });
+    const no = unwrapToolJson({ body: (await callTool('check_usage_rights', { asset_id: 'asset-0001', channel: 'x' }, 'read-token')).body });
     expect(no.allowed).toBe(false);
     expect(no.reason).toBe('channel_not_licensed');
   });
 
-  it('check_use reports asset_not_found', async () => {
-    const out = unwrapToolJson({ body: (await callTool('check_use', { asset_id: 'ghost', channel: 'x' }, 'read-token')).body });
+  it('check_usage_rights reports asset_not_found', async () => {
+    const out = unwrapToolJson({ body: (await callTool('check_usage_rights', { asset_id: 'ghost', channel: 'x' }, 'read-token')).body });
     expect(out.allowed).toBe(false);
     expect(out.reason).toBe('asset_not_found');
+  });
+
+  it('deprecated alias check_use still works and is marked', async () => {
+    const { body } = await callTool('check_use', { asset_id: 'asset-0001', channel: 'xiaohongshu' }, 'read-token');
+    expect(body.result.deprecated_alias).toBe('check_use');
+    expect(body.result.use_instead).toBe('check_usage_rights');
+    const out = unwrapToolJson({ body });
+    expect(out.allowed).toBe(true);
+  });
+
+  it('tools/list shows only the canonical name', async () => {
+    const { body } = await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, 'read-token');
+    const names = body.result.tools.map((t: { name: string }) => t.name);
+    expect(names).toContain('check_usage_rights');
+    expect(names).not.toContain('check_use');
   });
 });
 
@@ -195,7 +210,7 @@ describe('gated write tools (two-call confirmation)', () => {
     const r2 = unwrapToolJson({ body: (await callTool('set_rights', { ...rightsArgs, _confirmation: r1.confirmation_token })).body });
     expect(r2.rights.status).toBe('Cleared');
 
-    const check = unwrapToolJson({ body: (await callTool('check_use', { asset_id: id, channel: 'x' }, 'read-token')).body });
+    const check = unwrapToolJson({ body: (await callTool('check_usage_rights', { asset_id: id, channel: 'x' }, 'read-token')).body });
     expect(check.allowed).toBe(true);
   });
 
@@ -220,7 +235,7 @@ describe('argument validation', () => {
   });
 
   it('invalid arguments return -32602', async () => {
-    const { body } = await callTool('check_use', { channel: 'x' }, 'read-token');
+    const { body } = await callTool('check_usage_rights', { channel: 'x' }, 'read-token');
     expect(body.error.code).toBe(-32602);
   });
 });

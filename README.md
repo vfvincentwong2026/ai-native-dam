@@ -124,6 +124,8 @@ flowchart TB
 
 **Boundary rule:** the execution plane **must not** invent its own approval or rights logic. It calls the governance plane's MCP tools. Governance is not optional.
 
+Design decisions such as retrieval filtering, memory layering, and distillation gating are recorded as ADRs in [`docs/adr/`](./docs/adr/).
+
 ---
 
 ## Tech Stack
@@ -252,6 +254,10 @@ ai-native-dam/
 
 ## MCP Tools
 
+> **Canonical source of truth:** tool names, descriptions, and schemas live in
+> `packages/shared-schema` and [`docs/mcp-tools.md`](./docs/mcp-tools.md).
+> The tables below are projections — when they disagree, the schema package wins.
+
 The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each tool declares its `risk_level`, `gated` status, and whether it is exposed to **Suggest / Read / Edit** scopes. Writes are **always** routed through `mcp-approval`; reads are scoped to the calling user.
 
 ### Media & Knowledge
@@ -259,7 +265,7 @@ The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each
 | Tool | Risk | Gated | Description |
 |---|---|---|---|
 | `search_assets` | low | — | Query media by tag, metadata, channel, or semantic similarity |
-| `check_use` | low | — | Can this asset be used on *channel X* in *territory Y* now? |
+| `check_usage_rights` | low | — | Can this asset be used on *channel X* in *territory Y* now? |
 | `create_asset` | medium | ✅ | Ingest with provenance; requires rights declaration |
 | `set_rights` | medium | ✅ | Attach license, territory, embargo, channel scope |
 | `record_usage` | medium | ✅ | Log a use; rejected if rights are not `Cleared` for the target |
@@ -355,9 +361,9 @@ When the MCP gateway is ready, you can expose a **read-only** MCP endpoint direc
 | **0 · Foundation** | Governance plane | Artbucket running, MCP endpoint verified, first 5 media tools, `docs/mcp-tools.md` |
 | **1 · Skills & Knowledge** | Capability registry | `search_skills`, `apply_skill`, layered knowledge base, write-gated |
 | **2 · Spec-first Generation** | Builder Runtime | Orchestration, `generate_system_spec`, approval gate, **one SOP → one approved Spec** |
-| **3 · A2A Collaboration** | Peer agents | Agent Card live, customer agents can delegate generation |
-| **4 · Distillation** | Capability compounding | `request_distillation`, pause-before-train, LoRA adapter registry |
-| **5 · Meta-generation** | Systems that generate systems | Spec templates for “generate a DAM” as a first-class output |
+| **3 · A2A Collaboration** *(planned)* | Peer agents | Agent Card live, customer agents can delegate generation |
+| **4 · Distillation** *(planned)* | Capability compounding | `request_distillation`, pause-before-train, LoRA adapter registry |
+| **5 · Meta-generation** *(planned)* | Systems that generate systems | Spec templates for “generate a DAM” as a first-class output |
 
 Status: **Phase 0.** See [open issues](https://github.com/vfvincentwong2026/ai-native-dam/issues).
 

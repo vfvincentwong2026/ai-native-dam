@@ -1,8 +1,8 @@
 import {
   SearchAssetsInput,
   SearchAssetsOutput,
-  CheckUseInput,
-  CheckUseOutput,
+  CheckUsageRightsInput,
+  CheckUsageRightsOutput,
   CreateAssetInput,
   CreateAssetOutput,
   SetRightsInput,
@@ -59,17 +59,23 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     output: SearchAssetsOutput,
   },
   {
-    name: 'check_use',
-    description: 'Can this asset be used on channel X in territory Y now?',
+    name: 'check_usage_rights',
+    description:
+      'Rights check only: can this asset be used on channel X in territory Y now? ' +
+      'Read-only; does not log usage (use record_usage) and never modifies rights (use set_rights). ' +
+      'Formerly check_use — the old name is a deprecated alias.',
     riskLevel: 'low',
     gated: false,
     scopes: ['Suggest', 'Read', 'Edit'],
-    input: CheckUseInput,
-    output: CheckUseOutput,
+    input: CheckUsageRightsInput,
+    output: CheckUsageRightsOutput,
   },
   {
     name: 'create_asset',
-    description: 'Ingest an asset with provenance; requires rights declaration.',
+    description:
+      'Ingest an asset with provenance; requires a license declaration. Gated by approval. ' +
+      'The asset lands with rights_status Pending; this tool does not set rights (use set_rights) ' +
+      'and does not make the asset usable on any channel.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -78,7 +84,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: 'set_rights',
-    description: 'Attach license, territory, embargo, and channel scope to an asset.',
+    description:
+      'Attach license, territory, embargo, and channel scope to an asset. Gated by approval. ' +
+      'Does not validate or undo past usage records, and does not grant usage by itself — ' +
+      'record_usage still re-checks rights at call time.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -87,7 +96,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: 'record_usage',
-    description: 'Log a use; rejected if rights are not Cleared for the target.',
+    description:
+      'Log a use. Gated by approval. Rejected when check_usage_rights would return allowed=false ' +
+      'for the target channel/territory. Does not publish or distribute anything; it only writes an audit record.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -105,7 +116,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: 'apply_skill',
-    description: 'Invoke a skill version; records usage against provenance.',
+    description:
+      'Invoke a skill version; records usage against provenance. Gated by approval. ' +
+      'Does not modify the skill itself and does not approve new versions — it only executes an approved version.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -114,7 +127,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: 'register_skill',
-    description: 'Register a skill version with provenance (source repo, path, commit). Lands as pending_approval.',
+    description:
+      'Register a skill version with commit-pinned provenance (source repo, path, commit). Gated by approval. ' +
+      'Lands as pending_approval; does not make the skill discoverable or invocable until a governance approver approves it.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -123,7 +138,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: 'generate_system_spec',
-    description: 'Draft a System Spec from conversation, skills, and knowledge.',
+    description:
+      'Draft a System Spec from conversation, skills, and knowledge. Gated by approval. ' +
+      'Draft only — does not trigger code generation; submit the draft for approval with submit_system_spec.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -141,7 +158,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: 'write_knowledge',
-    description: 'Write a knowledge entry; requires approval.',
+    description:
+      'Write a knowledge entry. Gated by approval; the entry lands as pending_approval. ' +
+      'Does not make the entry discoverable until approved, and never overwrites existing entries.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -150,7 +169,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: 'request_distillation',
-    description: 'Flag a skill for distillation after N uses; pauses before training.',
+    description:
+      'Flag a skill for distillation after N uses. Gated by approval. ' +
+      'Pauses before training — never starts training by itself; training requires a separate human decision (see docs/adr/0003).',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -159,7 +180,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
   {
     name: 'register_lora_adapter',
-    description: 'Register a distilled LoRA adapter as a versioned asset.',
+    description:
+      'Register a distilled LoRA adapter as a versioned asset. High risk, always gated. ' +
+      'Registers metadata only; does not deploy, load, or serve the adapter.',
     riskLevel: 'high',
     gated: true,
     scopes: ['Edit'],

@@ -21,14 +21,16 @@ const TOOLS = [
     }
   },
   {
-    name: 'check_use',
-    description: 'Check whether an asset may be used on a channel. Read-only.',
+    name: 'check_usage_rights',
+    description:
+      'Rights check only: whether an asset may be used on a channel. Read-only showcase; ' +
+      'does not log usage or modify rights. (Formerly check_use — still accepted as a deprecated alias.)',
     inputSchema: {
       type: 'object',
       properties: {
         asset_id: { type: 'string' },
-        channel: { type: 'string' },
-        territory: { type: 'string', default: 'CN' }
+        channel: { type: 'string', enum: ['x', 'youtube', 'instagram', 'xiaohongshu', 'wechat_channels'] },
+        territory: { type: 'string', enum: ['CN', 'US', 'EU', 'GLOBAL'], default: 'CN' }
       },
       required: ['asset_id', 'channel']
     }
@@ -57,7 +59,10 @@ function rpcError(id, code, message) {
 }
 
 function handleToolCall(params) {
-  const name = params?.name;
+  // Deprecated aliases keep working on the wire.
+  const ALIASES = { check_use: 'check_usage_rights' };
+  const requested = params?.name;
+  const name = ALIASES[requested] ?? requested;
   const args = params?.arguments || {};
 
   if (name === 'search_assets') {
@@ -74,7 +79,7 @@ function handleToolCall(params) {
     };
   }
 
-  if (name === 'check_use') {
+  if (name === 'check_usage_rights') {
     const asset = assets.find(a => a.id === args.asset_id);
     if (!asset) {
       return {

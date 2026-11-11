@@ -76,7 +76,11 @@ Every tool declares `risk_level` (`low` / `medium` / `high`) and `gated` (`true`
 
 ---
 
-### `check_use`
+### `check_usage_rights`
+
+> Renamed from `check_use`. The old name remains accepted as a **deprecated
+> alias**; responses to alias calls carry `deprecated_alias` / `use_instead`
+> markers. New integrations must use `check_usage_rights`.
 
 | Field | Value |
 |---|---|
@@ -84,7 +88,8 @@ Every tool declares `risk_level` (`low` / `medium` / `high`) and `gated` (`true`
 | Gated | `false` |
 | Scopes | `Suggest`, `Read`, `Edit` |
 
-**Description.** Can this asset be used on *channel X* in *territory Y* right now?
+**Description.** Rights check only: can this asset be used on *channel X* in *territory Y* right now?
+Read-only — does not log usage (use `record_usage`) and never modifies rights (use `set_rights`).
 Returns `allowed: false` with a `replacement_id` when rights block the use.
 
 **Input Schema**
@@ -94,8 +99,8 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
   "type": "object",
   "properties": {
     "asset_id": { "type": "string" },
-    "channel": { "type": "string" },
-    "territory": { "type": "string", "default": "CN" },
+    "channel": { "type": "string", "enum": ["x", "youtube", "instagram", "xiaohongshu", "wechat_channels"] },
+    "territory": { "type": "string", "enum": ["CN", "US", "EU", "GLOBAL"], "default": "CN" },
     "at": { "type": "string", "format": "date-time", "description": "Defaults to now" }
   },
   "required": ["asset_id", "channel"]
@@ -125,7 +130,7 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
 | Gated | `true` |
 | Scopes | `Edit` |
 
-**Description.** Log a use. **Rejected if `check_use` would return `allowed: false`.**
+**Description.** Log a use. **Rejected if `check_usage_rights` would return `allowed: false`.** Does not publish or distribute anything; it only writes an audit record.
 
 **Input Schema**
 
@@ -173,7 +178,7 @@ Implemented in `packages/mcp-gateway` over Streamable HTTP, in-memory state:
 | Tool | Status |
 |---|---|
 | `search_assets` | ✅ implemented |
-| `check_use` | ✅ implemented |
+| `check_usage_rights` | ✅ implemented (renamed from `check_use`, alias kept) |
 | `create_asset` | ✅ implemented (gated) |
 | `set_rights` | ✅ implemented (gated) |
 | `record_usage` | ✅ implemented (gated, rights-rejection enforced) |

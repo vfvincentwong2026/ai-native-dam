@@ -6,6 +6,24 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `check_use` renamed to `check_usage_rights` across schema, gateway, showcase,
+  and docs. The old wire name keeps working as a deprecated alias (gateway maps
+  it and marks results with `deprecated_alias` / `use_instead`).
+- Every gated tool description now states what the tool does **not** do, and
+  tool-specific approval/rejection semantics live in the tool descriptions.
+- Controlled fields (`channel`, `territory`, `layer`, `domain`, `risk_level`)
+  are documented as enums everywhere, including `docs/mcp-tools.md` and the
+  showcase endpoint.
+- README: canonical-source pointer above the MCP tool tables, ADR pointer after
+  the architecture boundary rule, Roadmap phases 3/4/5 explicitly `planned`.
+
+### Added
+
+- `docs/adr/0001-retrieval-filter-before-similarity.md` and
+  `docs/adr/0003-distillation-decision-gate.md`.
+
 ### Fixed
 
 - `packages/shared-schema/tsconfig.json` contained `package.json` content, breaking

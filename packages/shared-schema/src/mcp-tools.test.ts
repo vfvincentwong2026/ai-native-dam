@@ -3,7 +3,7 @@ import { MCP_TOOLS, findTool } from './mcp-tools.js';
 
 const DOCUMENTED_TOOLS = [
   'search_assets',
-  'check_use',
+  'check_usage_rights',
   'create_asset',
   'set_rights',
   'record_usage',
@@ -56,9 +56,9 @@ describe('MCP_TOOLS registry', () => {
   });
 
   it('input schemas carry zod defaults that parse empty objects where allowed', () => {
-    const checkUse = findTool('check_use');
+    const checkUse = findTool('check_usage_rights');
     expect(checkUse).toBeDefined();
-    // check_use requires assetId + channel; parsing empty input must fail.
+    // check_usage_rights requires assetId + channel; parsing empty input must fail.
     const parsed = (checkUse!.input as { safeParse: (v: unknown) => { success: boolean } })
       .safeParse({});
     expect(parsed.success).toBe(false);

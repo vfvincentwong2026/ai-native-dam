@@ -7,6 +7,11 @@ import { wireToInternal, internalToWire } from './wire.js';
 
 export const MCP_PROTOCOL_VERSION = '2024-11-05';
 
+/** Deprecated tool names still accepted on the wire; tools/list only shows canonical names. */
+export const DEPRECATED_TOOL_ALIASES: Record<string, string> = {
+  check_use: 'check_usage_rights',
+};
+
 const CORS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -84,7 +89,11 @@ export function createGateway(options: GatewayOptions): Gateway {
         if (typeof name !== 'string') {
           return rpcError(id, -32602, 'Invalid params: name must be a string');
         }
-        const tool = findGatewayTool(name);
+        // Deprecated aliases keep working; the result is marked so clients migrate.
+        const canonicalName = DEPRECATED_TOOL_ALIASES[name] ?? name;
+        const deprecation =
+          canonicalName === name ? {} : { deprecated_alias: name, use_instead: canonicalName };
+        const tool = findGatewayTool(canonicalName);
         if (!tool) {
           return rpcError(id, -32601, `Unknown tool: ${name}`);
         }
@@ -107,9 +116,8 @@ export function createGateway(options: GatewayOptions): Gateway {
             return rpcError(id, -32010, 'Invalid, expired, or already-used confirmation token');
           }
           if (check.status === 'confirmation_required') {
-            return rpcOk(
-              id,
-              toolResult({
+            return rpcOk(id, {
+              ...toolResult({
                 approval_required: true,
                 tool: tool.name,
                 risk_level: tool.riskLevel,
@@ -118,7 +126,8 @@ export function createGateway(options: GatewayOptions): Gateway {
                 instructions:
                   'Repeat this tools/call with identical arguments plus "_confirmation": <token>.',
               }),
-            );
+              ...deprecation,
+            });
           }
         }
 
@@ -129,10 +138,10 @@ export function createGateway(options: GatewayOptions): Gateway {
 
         try {
           const result = tool.handler(parsed.data as never, { state, principal });
-          return rpcOk(id, toolResult(internalToWire(result)));
+          return rpcOk(id, { ...toolResult(internalToWire(result)), ...deprecation });
         } catch (err) {
           if (err instanceof ToolRejection) {
-            return rpcOk(id, toolResult({ rejected: true, reason: err.reason }, true));
+            return rpcOk(id, { ...toolResult({ rejected: true, reason: err.reason }, true), ...deprecation });
           }
           const message = err instanceof Error ? err.message : 'Internal error';
           return rpcError(id, -32603, message);

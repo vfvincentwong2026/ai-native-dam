@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 import {
-  CheckUseInput,
+  CheckUsageRightsInput,
   CreateAssetInput,
   RecordUsageInput,
   RegisterSkillInput,
@@ -81,8 +81,10 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
     },
   },
   {
-    name: 'check_use',
-    description: 'Can this asset be used on channel X in territory Y now?',
+    name: 'check_usage_rights',
+    description:
+      'Rights check only: can this asset be used on channel X in territory Y now? ' +
+      'Read-only; does not log usage (use record_usage) and never modifies rights (use set_rights).',
     riskLevel: 'low',
     gated: false,
     scopes: ['Suggest', 'Read', 'Edit'],
@@ -96,8 +98,8 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       },
       required: ['asset_id', 'channel'],
     },
-    schema: CheckUseInput,
-    handler: (args: z.infer<typeof CheckUseInput>, ctx: ToolContext) => {
+    schema: CheckUsageRightsInput,
+    handler: (args: z.infer<typeof CheckUsageRightsInput>, ctx: ToolContext) => {
       if (!ctx.state.assets.has(args.assetId)) {
         return { allowed: false, reason: 'asset_not_found', replacementId: null };
       }
@@ -107,7 +109,10 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
   },
   {
     name: 'create_asset',
-    description: 'Ingest an asset with provenance; requires a license declaration. Gated.',
+    description:
+      'Ingest an asset with provenance; requires a license declaration. Gated by approval. ' +
+      'The asset lands with rights_status Pending; does not set rights (use set_rights) ' +
+      'and does not make the asset usable on any channel.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -141,7 +146,9 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
   },
   {
     name: 'set_rights',
-    description: 'Attach license, territory, embargo, and channel scope to an asset. Gated.',
+    description:
+      'Attach license, territory, embargo, and channel scope to an asset. Gated by approval. ' +
+      'Does not validate or undo past usage records; record_usage re-checks rights at call time.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -178,7 +185,9 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
   },
   {
     name: 'record_usage',
-    description: 'Log a use. Rejected if rights are not Cleared for the target. Gated.',
+    description:
+      'Log a use. Gated by approval. Rejected when check_usage_rights would return allowed=false. ' +
+      'Does not publish or distribute anything; it only writes an audit record.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -242,7 +251,9 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
   },
   {
     name: 'write_knowledge',
-    description: 'Write a knowledge entry. Gated; the entry lands as pending_approval. Gated.',
+    description:
+      'Write a knowledge entry. Gated by approval; lands as pending_approval. ' +
+      'Does not make the entry discoverable until approved; never overwrites existing entries.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
@@ -299,7 +310,8 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
   {
     name: 'register_skill',
     description:
-      'Register a skill version with provenance (source repo, path, commit). Lands as pending_approval. Gated.',
+      'Register a skill version with commit-pinned provenance (source repo, path, commit). Gated by approval. ' +
+      'Lands as pending_approval; does not make the skill discoverable or invocable until approved.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
