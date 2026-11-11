@@ -165,4 +165,22 @@ export class PgSkillStore implements SkillStore {
     );
     return (rows as SkillRow[]).map(rowToSkill);
   }
+
+  async approve(
+    id: string,
+    version: string,
+    approvedBy: string,
+    approvedAt: string,
+  ): Promise<Skill | undefined> {
+    // Atomic transition guard: only draft/pending_approval can be approved.
+    const { rows } = await this.db.query(
+      `UPDATE skill_registry
+       SET status = 'approved', approved_by = $3, approved_at = $4
+       WHERE id = $1 AND version = $2 AND status IN ('draft', 'pending_approval')
+       RETURNING *`,
+      [id, version, approvedBy, approvedAt],
+    );
+    const row = rows[0] as SkillRow | undefined;
+    return row ? rowToSkill(row) : undefined;
+  }
 }

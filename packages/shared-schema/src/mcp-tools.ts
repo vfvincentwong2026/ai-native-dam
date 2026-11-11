@@ -17,6 +17,8 @@ import {
   ApplySkillOutput,
   RegisterSkillInput,
   RegisterSkillOutput,
+  ApproveSkillInput,
+  ApproveSkillOutput,
 } from './skills.js';
 import {
   GenerateSystemSpecInput,
@@ -135,6 +137,19 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     scopes: ['Edit'],
     input: RegisterSkillInput,
     output: RegisterSkillOutput,
+  },
+  {
+    name: 'approve_skill',
+    description:
+      'Approve a pending_approval (or draft) skill version, making it discoverable via search_skills and ' +
+      'invocable. High risk, always gated. The approver identity is taken from the authenticated principal, ' +
+      'never from arguments. Does not modify skill content or provenance, and cannot revoke — revocation is a ' +
+      'separate governance action.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    input: ApproveSkillInput,
+    output: ApproveSkillOutput,
   },
   {
     name: 'generate_system_spec',

@@ -19,6 +19,13 @@ export interface SkillStore {
   put(skill: Skill): Promise<void>;
   /** Registry search: exact domain, substring query, approval flag. */
   search(filter: SkillSearchFilter): Promise<Skill[]>;
+  /**
+   * Transition draft/pending_approval → approved, stamping approver and time.
+   * Returns the updated skill, or undefined when the version is missing or
+   * already in a non-approvable state (approved / revoked) — callers use
+   * `get` to distinguish.
+   */
+  approve(id: string, version: string, approvedBy: string, approvedAt: string): Promise<Skill | undefined>;
   /** Release connections / flush files. Optional; memory store has none. */
   close?(): Promise<void>;
 }
@@ -50,5 +57,21 @@ export class MemorySkillStore implements SkillStore {
 
   async search(filter: SkillSearchFilter): Promise<Skill[]> {
     return [...this.skills.values()].filter(s => matches(s, filter));
+  }
+
+  async approve(
+    id: string,
+    version: string,
+    approvedBy: string,
+    approvedAt: string,
+  ): Promise<Skill | undefined> {
+    const key = `${id}@${version}`;
+    const skill = this.skills.get(key);
+    if (!skill || (skill.status !== 'draft' && skill.status !== 'pending_approval')) {
+      return undefined;
+    }
+    const updated: Skill = { ...skill, status: 'approved', approvedBy, approvedAt };
+    this.skills.set(key, updated);
+    return updated;
   }
 }

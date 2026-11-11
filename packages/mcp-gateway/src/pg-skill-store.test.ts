@@ -98,6 +98,47 @@ describe('PgSkillStore (embedded PGlite)', () => {
     expect(await second.get('operations:test-skill', '0.1.0')).toEqual(makeSkill());
     await second.close();
   });
+
+  it('approve transitions only from draft/pending_approval and stamps the approver', async () => {
+    const store = await PgSkillStore.embedded(await tempDir());
+    await store.put(makeSkill());
+    await store.put(makeSkill({ id: 'operations:draft-skill', version: '0.1.0', status: 'draft' }));
+    await store.put(makeSkill({
+      id: 'operations:done-skill', version: '0.1.0', status: 'approved',
+      approvedAt: '2026-11-01T00:00:00.000Z', approvedBy: 'vincent',
+    }));
+    await store.put(makeSkill({ id: 'operations:dead-skill', version: '0.1.0', status: 'revoked' }));
+
+    const approved = await store.approve('operations:test-skill', '0.1.0', 'vincent', '2026-11-12T01:00:00.000Z');
+    expect(approved?.status).toBe('approved');
+    expect(approved?.approvedBy).toBe('vincent');
+    expect(approved?.approvedAt).toBe('2026-11-12T01:00:00.000Z');
+
+    // draft → approved is allowed
+    expect((await store.approve('operations:draft-skill', '0.1.0', 'v', '2026-11-12T01:01:00.000Z'))?.status)
+      .toBe('approved');
+    // already approved / revoked / missing → undefined, no mutation
+    expect(await store.approve('operations:done-skill', '0.1.0', 'v', '2026-11-12T01:02:00.000Z')).toBeUndefined();
+    expect(await store.approve('operations:dead-skill', '0.1.0', 'v', '2026-11-12T01:03:00.000Z')).toBeUndefined();
+    expect(await store.approve('operations:ghost', '0.1.0', 'v', '2026-11-12T01:04:00.000Z')).toBeUndefined();
+    expect((await store.get('operations:done-skill', '0.1.0'))?.approvedBy).toBe('vincent');
+    await store.close();
+  });
+
+  it('approval survives a close/reopen cycle', async () => {
+    const dir = await tempDir();
+    const first = await PgSkillStore.embedded(dir);
+    await first.put(makeSkill());
+    await first.approve('operations:test-skill', '0.1.0', 'vincent', '2026-11-12T01:00:00.000Z');
+    await first.close();
+
+    const second = await PgSkillStore.embedded(dir);
+    const got = await second.get('operations:test-skill', '0.1.0');
+    expect(got?.status).toBe('approved');
+    expect(got?.approvedBy).toBe('vincent');
+    expect(await second.search({ onlyApproved: true })).toHaveLength(1);
+    await second.close();
+  });
 });
 
 describe('gateway with a persistent SkillStore', () => {
@@ -173,6 +214,70 @@ describe('gateway with a persistent SkillStore', () => {
     });
     expect(dupe.rejected).toBe(true);
     expect(dupe.reason).toBe('skill_version_exists');
+    await stopGateway();
+  });
+
+  it('approve_skill (gated) makes a pending skill discoverable and is idempotent-safe', async () => {
+    const dir = await tempDir();
+    const wireArgs = {
+      id: 'operations:arb-aeon-trial',
+      version: '0.1.0',
+      name: 'arb-aeon-trial',
+      description: 'appliance trial station setup SOP',
+      domain: 'operations',
+    };
+
+    await startGateway(dir);
+    const regFirst = await callTool('register_skill', wireArgs);
+    await callTool('register_skill', { ...wireArgs, _confirmation: regFirst.confirmation_token });
+
+    // Not visible under the default only_approved filter before approval.
+    const before = await callTool('search_skills', {});
+    expect(before.skills).toHaveLength(0);
+
+    // approve_skill is gated too: first call returns a token, second executes.
+    const approveFirst = await callTool('approve_skill', { id: wireArgs.id, version: wireArgs.version });
+    expect(approveFirst.approval_required).toBe(true);
+    expect(approveFirst.risk_level).toBe('high');
+    const approved = await callTool('approve_skill', {
+      id: wireArgs.id,
+      version: wireArgs.version,
+      _confirmation: approveFirst.confirmation_token,
+    });
+    expect(approved.skill.status).toBe('approved');
+    // Approver identity comes from the token principal, not from arguments.
+    expect(approved.skill.approved_by).toBe('editor');
+    expect(approved.skill.approved_at).toBeTruthy();
+
+    const after = await callTool('search_skills', {});
+    expect(after.skills.map((s: any) => s.id)).toEqual(['operations:arb-aeon-trial']);
+
+    // Second approval attempt is rejected, not silently re-stamped.
+    const againFirst = await callTool('approve_skill', { id: wireArgs.id, version: wireArgs.version });
+    const again = await callTool('approve_skill', {
+      id: wireArgs.id,
+      version: wireArgs.version,
+      _confirmation: againFirst.confirmation_token,
+    });
+    expect(again.rejected).toBe(true);
+    expect(again.reason).toBe('invalid_status_transition');
+
+    // Unknown skill → skill_not_found.
+    const missingFirst = await callTool('approve_skill', { id: 'operations:ghost', version: '9.9.9' });
+    const missing = await callTool('approve_skill', {
+      id: 'operations:ghost',
+      version: '9.9.9',
+      _confirmation: missingFirst.confirmation_token,
+    });
+    expect(missing.rejected).toBe(true);
+    expect(missing.reason).toBe('skill_not_found');
+    await stopGateway();
+
+    // Approval persists across a gateway restart.
+    await startGateway(dir);
+    const afterRestart = await callTool('search_skills', {});
+    expect(afterRestart.skills[0].status).toBe('approved');
+    expect(afterRestart.skills[0].approved_by).toBe('editor');
     await stopGateway();
   });
 });

@@ -75,3 +75,14 @@ export const RegisterSkillOutput = z.object({
   skill: Skill,
 });
 export type RegisterSkillOutput = z.infer<typeof RegisterSkillOutput>;
+
+export const ApproveSkillInput = z.object({
+  id: SkillId,
+  version: z.string().regex(SEMVER_PATTERN),
+});
+export type ApproveSkillInput = z.infer<typeof ApproveSkillInput>;
+
+export const ApproveSkillOutput = z.object({
+  skill: Skill,
+});
+export type ApproveSkillOutput = z.infer<typeof ApproveSkillOutput>;

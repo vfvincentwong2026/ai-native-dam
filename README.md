@@ -293,6 +293,8 @@ The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each
 | Tool | Risk | Gated | Description |
 |---|---|---|---|
 | `search_skills` | low | — | Query Skill Registry by domain and rights scope |
+| `register_skill` | medium | ✅ | Register a skill version with commit-pinned provenance; lands as `pending_approval` |
+| `approve_skill` | high | ✅ | Approve a pending skill version; approver identity from the authenticated principal |
 | `apply_skill` | medium | ✅ | Invoke a skill version; records usage against provenance |
 | `generate_system_spec` | medium | ✅ | Draft a System Spec from conversation + skills + knowledge |
 | `submit_system_spec` | high | ✅ | Submit for approval; generation runs **only after approval** |

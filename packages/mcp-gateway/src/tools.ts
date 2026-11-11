@@ -5,6 +5,7 @@ import {
   CreateAssetInput,
   RecordUsageInput,
   RegisterSkillInput,
+  ApproveSkillInput,
   SearchAssetsInput,
   SearchKnowledgeInput,
   SearchSkillsInput,
@@ -356,6 +357,42 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       };
       await ctx.skillStore.put(skill);
       return { skill };
+    },
+  },
+  {
+    name: 'approve_skill',
+    description:
+      'Approve a pending_approval (or draft) skill version, making it discoverable via search_skills and ' +
+      'invocable. High risk, always gated. The approver identity is taken from the authenticated principal, ' +
+      'never from arguments. Does not modify skill content or provenance, and cannot revoke — revocation is a ' +
+      'separate governance action.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', pattern: '^[a-z0-9][a-z0-9:_-]*$', description: 'Namespaced slug, e.g. drama:script-split' },
+        version: { type: 'string', pattern: '^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$' },
+      },
+      required: ['id', 'version'],
+    },
+    schema: ApproveSkillInput,
+    handler: async (args: z.infer<typeof ApproveSkillInput>, ctx: ToolContext) => {
+      const approvedAt = new Date().toISOString();
+      // Approver identity comes from the authenticated principal, not arguments.
+      const approved = await ctx.skillStore.approve(args.id, args.version, ctx.principal.id, approvedAt);
+      if (!approved) {
+        const existing = await ctx.skillStore.get(args.id, args.version);
+        if (!existing) {
+          throw new ToolRejection('skill_not_found', `Skill ${args.id}@${args.version} is not registered`);
+        }
+        throw new ToolRejection(
+          'invalid_status_transition',
+          `Skill ${args.id}@${args.version} has status ${existing.status}; only draft or pending_approval can be approved`,
+        );
+      }
+      return { skill: approved };
     },
   },
 ];
