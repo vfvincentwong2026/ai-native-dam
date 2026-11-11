@@ -167,6 +167,22 @@ pnpm --filter @ai-native-dam/mcp-gateway start
 # → MCP endpoint on http://localhost:8080/mcp (dev token: "dev-token")
 ```
 
+The Skill Registry can be made durable without changing any tool behavior —
+set one of these before `start` (first match wins):
+
+```bash
+# Real Postgres (e.g. the docker compose `postgres` service):
+DAM_DATABASE_URL=postgres://dam:dam@localhost:5432/dam
+
+# Embedded Postgres via PGlite — durable files, no server install:
+DAM_PG_DATA_DIR=./data/pg
+```
+
+With neither set, the registry stays in-memory (dev only). The schema
+self-bootstraps on startup; the reference DDL is
+`packages/mcp-gateway/migrations/0001_skill_registry.sql`, and the design
+rationale is in `docs/adr/0004-skill-registry-persistence.md`.
+
 ```bash
 curl -s http://localhost:8080/mcp \
   -H "Content-Type: application/json" \

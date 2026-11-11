@@ -15,10 +15,13 @@
   "dependencies": {
     "@ai-native-dam/governance": "workspace:*",
     "@ai-native-dam/shared-schema": "workspace:*",
+    "@electric-sql/pglite": "^0.5.16",
+    "pg": "^8.23.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }

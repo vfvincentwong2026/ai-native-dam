@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { resolvePrincipal, hasAnyScope, type TokenMap, type Principal } from './auth.js';
 import { ApprovalGate, InMemoryApprovalStore } from './approval.js';
+import { MemorySkillStore, type SkillStore } from './skill-store.js';
 import { createState, type GatewayState, type StateSeed } from './state.js';
 import { GATEWAY_TOOLS, findGatewayTool, ToolRejection } from './tools.js';
 import { wireToInternal, internalToWire } from './wire.js';
@@ -21,6 +22,8 @@ const CORS: Record<string, string> = {
 export interface GatewayOptions {
   tokens: TokenMap;
   seed?: StateSeed;
+  /** Skill Registry persistence. Defaults to an in-memory store over state.skills. */
+  skillStore?: SkillStore;
   approvalTtlMs?: number;
   serverName?: string;
   serverVersion?: string;
@@ -29,6 +32,7 @@ export interface GatewayOptions {
 export interface Gateway {
   server: http.Server;
   state: GatewayState;
+  skillStore: SkillStore;
   gate: ApprovalGate;
 }
 
@@ -56,11 +60,12 @@ function toolResult(payload: unknown, isError = false) {
 
 export function createGateway(options: GatewayOptions): Gateway {
   const state = createState(options.seed);
+  const skillStore = options.skillStore ?? new MemorySkillStore(state.skills);
   const gate = new ApprovalGate(new InMemoryApprovalStore(), options.approvalTtlMs);
   const serverName = options.serverName ?? 'ai-native-dam-gateway';
   const serverVersion = options.serverVersion ?? '0.1.0';
 
-  function handleRpc(payload: RpcPayload, principal: Principal): unknown {
+  async function handleRpc(payload: RpcPayload, principal: Principal): Promise<unknown> {
     const { id, method, params } = payload;
 
     switch (method) {
@@ -137,7 +142,7 @@ export function createGateway(options: GatewayOptions): Gateway {
         }
 
         try {
-          const result = tool.handler(parsed.data as never, { state, principal });
+          const result = await tool.handler(parsed.data as never, { state, skillStore, principal });
           return rpcOk(id, { ...toolResult(internalToWire(result)), ...deprecation });
         } catch (err) {
           if (err instanceof ToolRejection) {
@@ -186,7 +191,7 @@ export function createGateway(options: GatewayOptions): Gateway {
 
     const chunks: Buffer[] = [];
     req.on('data', (c: Buffer) => chunks.push(c));
-    req.on('end', () => {
+    req.on('end', async () => {
       let payload: RpcPayload;
       try {
         payload = JSON.parse(Buffer.concat(chunks).toString('utf8')) as RpcPayload;
@@ -195,7 +200,7 @@ export function createGateway(options: GatewayOptions): Gateway {
         return;
       }
       try {
-        const response = handleRpc(payload, principal);
+        const response = await handleRpc(payload, principal);
         if (response === undefined) {
           res.writeHead(202, CORS);
           res.end();
@@ -209,5 +214,5 @@ export function createGateway(options: GatewayOptions): Gateway {
     });
   });
 
-  return { server, state, gate };
+  return { server, state, skillStore, gate };
 }

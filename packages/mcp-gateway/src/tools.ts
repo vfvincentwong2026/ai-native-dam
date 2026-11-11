@@ -20,6 +20,7 @@ import {
 } from '@ai-native-dam/shared-schema';
 import { checkUse, searchAssets, type AssetWithRights } from '@ai-native-dam/governance';
 import type { Principal } from './auth.js';
+import type { SkillStore } from './skill-store.js';
 import type { GatewayState } from './state.js';
 
 /** Domain-level rejection (e.g. rights not cleared). Mapped to MCP isError content. */
@@ -35,6 +36,8 @@ export class ToolRejection extends Error {
 
 export interface ToolContext {
   state: GatewayState;
+  /** Skill Registry persistence — memory, embedded PGlite, or Postgres pool. */
+  skillStore: SkillStore;
   principal: Principal;
 }
 
@@ -48,7 +51,7 @@ export interface GatewayTool {
   inputSchema: Record<string, unknown>;
   /** Zod schema used to validate and default the arguments. */
   schema: z.ZodTypeAny;
-  handler: (args: never, ctx: ToolContext) => unknown;
+  handler: (args: never, ctx: ToolContext) => unknown | Promise<unknown>;
 }
 
 const CHANNELS = ['x', 'youtube', 'instagram', 'xiaohongshu', 'wechat_channels'];
@@ -298,12 +301,12 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       },
     },
     schema: SearchSkillsInput,
-    handler: (args: z.infer<typeof SearchSkillsInput>, ctx: ToolContext) => {
-      const q = args.query?.toLowerCase();
-      const skills = [...ctx.state.skills.values()]
-        .filter(s => !args.domain || s.domain === args.domain)
-        .filter(s => !q || `${s.name} ${s.description}`.toLowerCase().includes(q))
-        .filter(s => !args.onlyApproved || s.status === 'approved');
+    handler: async (args: z.infer<typeof SearchSkillsInput>, ctx: ToolContext) => {
+      const skills = await ctx.skillStore.search({
+        domain: args.domain,
+        query: args.query,
+        onlyApproved: args.onlyApproved,
+      });
       return { skills };
     },
   },
@@ -330,9 +333,9 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       required: ['id', 'version', 'name', 'description'],
     },
     schema: RegisterSkillInput,
-    handler: (args: z.infer<typeof RegisterSkillInput>, ctx: ToolContext) => {
+    handler: async (args: z.infer<typeof RegisterSkillInput>, ctx: ToolContext) => {
       const key = `${args.id}@${args.version}`;
-      if (ctx.state.skills.has(key)) {
+      if (await ctx.skillStore.get(args.id, args.version)) {
         throw new ToolRejection('skill_version_exists', `Skill ${key} is already registered`);
       }
       const skill: Skill = {
@@ -351,7 +354,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         sourcePath: args.sourcePath,
         sourceCommit: args.sourceCommit,
       };
-      ctx.state.skills.set(key, skill);
+      await ctx.skillStore.put(skill);
       return { skill };
     },
   },
