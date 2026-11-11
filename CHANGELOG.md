@@ -20,6 +20,17 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `packages/skill-sync`: skill-repository syncer — scans SKILL.md files,
+  validates frontmatter against the industrial spec, derives git provenance
+  (repo / path / commit), and registers skills through the gateway's approval
+  gate. Ships a `skill-sync` CLI (`--dry-run` / `--gateway` / `--token`).
+- `templates/vincent-core`: ready-to-push skeleton for the certified core
+  skill hub (layout, example skill, zero-dependency validator, CI workflow
+  with DAM sync job).
+- `docs/skill-format.md`: industrial skill manifest + intake/trigger spec.
+- `register_skill` MCP tool (gated) with commit-pinned provenance; `Skill`
+  schema gains `sourceRepo` / `sourcePath` / `sourceCommit`.
+
 - `packages/mcp-gateway`: MCP Gateway over Streamable HTTP — bearer auth,
   scope-based RBAC (`Suggest` / `Read` / `Edit`), two-call confirmation-token
   approval gate, snake_case wire contract translation, `/health`, and 8 live

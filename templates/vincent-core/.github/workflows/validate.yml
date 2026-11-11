@@ -1,0 +1,35 @@
+name: validate-skills
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/validate.mjs
+
+  # After merge to main, register new versions into the DAM Skill Registry.
+  # Requires secrets: DAM_GATEWAY_URL, DAM_TOKEN (Edit scope).
+  sync-to-dam:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sync skills into DAM registry
+        run: |
+          npx --yes github:vfvincentwong2026/ai-native-dam#packages/skill-sync \
+            . --gateway "$DAM_GATEWAY_URL" --token "$DAM_TOKEN"
+        env:
+          DAM_GATEWAY_URL: ${{ secrets.DAM_GATEWAY_URL }}
+          DAM_TOKEN: ${{ secrets.DAM_TOKEN }}

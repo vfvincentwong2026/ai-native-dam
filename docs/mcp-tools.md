@@ -150,6 +150,7 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
 |---|---|---|---|
 | `search_skills` | low | — | implemented (gateway, Phase 1) |
 | `apply_skill` | medium | ✅ | planned |
+| `register_skill` | medium | ✅ | implemented (gateway + `skill-sync`, Phase 1) |
 | `generate_system_spec` | medium | ✅ | planned |
 | `submit_system_spec` | high | ✅ | planned |
 | `register_generated_system` | high | ✅ | planned |
@@ -179,6 +180,12 @@ Implemented in `packages/mcp-gateway` over Streamable HTTP, in-memory state:
 | `search_knowledge` | ✅ implemented |
 | `write_knowledge` | ✅ implemented (gated, lands as `pending_approval`) |
 | `search_skills` | ✅ implemented |
+| `register_skill` | ✅ implemented (gated, lands as `pending_approval`, commit-pinned provenance) |
+
+`packages/skill-sync` scans any skill repository (SKILL.md + frontmatter per
+`docs/skill-format.md`), validates manifests, derives git provenance, and
+registers skills through the gateway's approval gate. `templates/vincent-core`
+is the ready-to-push skeleton for the certified core skill hub.
 
 The gateway authenticates via bearer token (`DAM_TOKENS`), filters `tools/list`
 by scope (`Suggest` / `Read` / `Edit`), and routes every gated tool through the

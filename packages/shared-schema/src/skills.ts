@@ -6,8 +6,11 @@ export type SkillStatus = z.infer<typeof SkillStatus>;
 export const SkillDomain = z.enum(['ecommerce', 'short_drama', 'retail', 'content', 'generic']);
 export type SkillDomain = z.infer<typeof SkillDomain>;
 
+export const SkillId = z.string().regex(/^[a-z0-9][a-z0-9:_-]*$/);
+export type SkillId = z.infer<typeof SkillId>;
+
 export const Skill = z.object({
-  id: z.string(),
+  id: SkillId,
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   name: z.string(),
   description: z.string(),
@@ -18,6 +21,10 @@ export const Skill = z.object({
   approvedBy: z.string().nullable(),
   loraArtifactRef: z.string().nullable(),
   createdAt: z.string().datetime(),
+  // Provenance: git is the source of truth; the registry governs the pointer.
+  sourceRepo: z.string().url().nullable(),
+  sourcePath: z.string().nullable(),
+  sourceCommit: z.string().nullable(),
 });
 export type Skill = z.infer<typeof Skill>;
 
@@ -47,3 +54,20 @@ export const ApplySkillOutput = z.object({
   reason: z.string().optional(),
 });
 export type ApplySkillOutput = z.infer<typeof ApplySkillOutput>;
+
+export const RegisterSkillInput = z.object({
+  id: SkillId,
+  version: z.string().regex(/^\d+\.\d+\.\d+$/),
+  name: z.string().min(1),
+  description: z.string().min(10),
+  domain: SkillDomain.default('generic'),
+  sourceRepo: z.string().url().nullable().default(null),
+  sourcePath: z.string().nullable().default(null),
+  sourceCommit: z.string().nullable().default(null),
+});
+export type RegisterSkillInput = z.infer<typeof RegisterSkillInput>;
+
+export const RegisterSkillOutput = z.object({
+  skill: Skill,
+});
+export type RegisterSkillOutput = z.infer<typeof RegisterSkillOutput>;

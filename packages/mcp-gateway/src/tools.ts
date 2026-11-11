@@ -4,6 +4,7 @@ import {
   CheckUseInput,
   CreateAssetInput,
   RecordUsageInput,
+  RegisterSkillInput,
   SearchAssetsInput,
   SearchKnowledgeInput,
   SearchSkillsInput,
@@ -14,6 +15,7 @@ import {
   type McpScope,
   type RightsRecord,
   type RiskLevel,
+  type Skill,
   type UsageRecord,
 } from '@ai-native-dam/shared-schema';
 import { checkUse, searchAssets, type AssetWithRights } from '@ai-native-dam/governance';
@@ -292,6 +294,53 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         .filter(s => !q || `${s.name} ${s.description}`.toLowerCase().includes(q))
         .filter(s => !args.onlyApproved || s.status === 'approved');
       return { skills };
+    },
+  },
+  {
+    name: 'register_skill',
+    description:
+      'Register a skill version with provenance (source repo, path, commit). Lands as pending_approval. Gated.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', pattern: '^[a-z0-9][a-z0-9:_-]*$', description: 'Namespaced slug, e.g. drama:script-split' },
+        version: { type: 'string', pattern: '^\\d+\\.\\d+\\.\\d+$' },
+        name: { type: 'string' },
+        description: { type: 'string', minLength: 10 },
+        domain: { type: 'string', enum: ['ecommerce', 'short_drama', 'retail', 'content', 'generic'], default: 'generic' },
+        source_repo: { type: ['string', 'null'], format: 'uri' },
+        source_path: { type: ['string', 'null'] },
+        source_commit: { type: ['string', 'null'], description: 'Commit hash the version is pinned to' },
+      },
+      required: ['id', 'version', 'name', 'description'],
+    },
+    schema: RegisterSkillInput,
+    handler: (args: z.infer<typeof RegisterSkillInput>, ctx: ToolContext) => {
+      const key = `${args.id}@${args.version}`;
+      if (ctx.state.skills.has(key)) {
+        throw new ToolRejection('skill_version_exists', `Skill ${key} is already registered`);
+      }
+      const skill: Skill = {
+        id: args.id,
+        version: args.version,
+        name: args.name,
+        description: args.description,
+        domain: args.domain,
+        sourceSopId: null,
+        status: 'pending_approval',
+        approvedAt: null,
+        approvedBy: null,
+        loraArtifactRef: null,
+        createdAt: new Date().toISOString(),
+        sourceRepo: args.sourceRepo,
+        sourcePath: args.sourcePath,
+        sourceCommit: args.sourceCommit,
+      };
+      ctx.state.skills.set(key, skill);
+      return { skill };
     },
   },
 ];

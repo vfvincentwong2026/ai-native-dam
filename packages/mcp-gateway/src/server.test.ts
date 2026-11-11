@@ -224,3 +224,47 @@ describe('argument validation', () => {
     expect(body.error.code).toBe(-32602);
   });
 });
+
+describe('register_skill', () => {
+  const skillArgs = {
+    id: 'drama:script-split',
+    version: '1.0.0',
+    name: 'Script Split',
+    description: 'Split a short-drama script into scenes.',
+    domain: 'short_drama',
+    source_repo: 'https://github.com/vfvincentwong2026/drama-skills',
+    source_path: 'script-split/SKILL.md',
+    source_commit: 'abc123',
+  };
+
+  it('registers via the confirmation flow and lands as pending_approval', async () => {
+    const first = unwrapToolJson({ body: (await callTool('register_skill', skillArgs)).body });
+    expect(first.approval_required).toBe(true);
+
+    const second = unwrapToolJson({
+      body: (await callTool('register_skill', { ...skillArgs, _confirmation: first.confirmation_token })).body,
+    });
+    expect(second.skill.status).toBe('pending_approval');
+    expect(second.skill.source_commit).toBe('abc123');
+
+    // Hidden from default (approved-only) search, visible with only_approved=false.
+    const hidden = unwrapToolJson({ body: (await callTool('search_skills', { query: 'script' }, 'read-token')).body });
+    expect(hidden.skills).toHaveLength(0);
+    const visible = unwrapToolJson({ body: (await callTool('search_skills', { query: 'script', only_approved: false }, 'read-token')).body });
+    expect(visible.skills).toHaveLength(1);
+  });
+
+  it('rejects re-registering the same id@version', async () => {
+    const first = unwrapToolJson({ body: (await callTool('register_skill', skillArgs)).body });
+    const second = await callTool('register_skill', { ...skillArgs, _confirmation: first.confirmation_token });
+    expect(second.body.result.isError).toBe(true);
+    expect(unwrapToolJson({ body: second.body }).reason).toBe('skill_version_exists');
+  });
+
+  it('rejects malformed skill ids at validation', async () => {
+    const args = { ...skillArgs, id: 'Bad ID!' };
+    const first = unwrapToolJson({ body: (await callTool('register_skill', args)).body });
+    const second = await callTool('register_skill', { ...args, _confirmation: first.confirmation_token });
+    expect(second.body.error.code).toBe(-32602);
+  });
+});

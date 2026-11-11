@@ -15,6 +15,8 @@ import {
   SearchSkillsOutput,
   ApplySkillInput,
   ApplySkillOutput,
+  RegisterSkillInput,
+  RegisterSkillOutput,
 } from './skills.js';
 import {
   GenerateSystemSpecInput,
@@ -109,6 +111,15 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     scopes: ['Edit'],
     input: ApplySkillInput,
     output: ApplySkillOutput,
+  },
+  {
+    name: 'register_skill',
+    description: 'Register a skill version with provenance (source repo, path, commit). Lands as pending_approval.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    input: RegisterSkillInput,
+    output: RegisterSkillOutput,
   },
   {
     name: 'generate_system_spec',
