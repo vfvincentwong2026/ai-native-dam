@@ -158,8 +158,8 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
 | `register_skill` | medium | ✅ | implemented (gateway + `skill-sync`, Phase 1) |
 | `approve_skill` | high | ✅ | implemented (gateway, Phase 1) |
 | `revoke_skill` | high | ✅ | implemented (gateway, Phase 1) |
-| `generate_system_spec` | medium | ✅ | planned |
-| `submit_system_spec` | high | ✅ | planned |
+| `generate_system_spec` | medium | ✅ | implemented (gateway, Phase 2) |
+| `submit_system_spec` | high | ✅ | implemented (gateway, Phase 2) |
 | `register_generated_system` | high | ✅ | planned |
 
 ---

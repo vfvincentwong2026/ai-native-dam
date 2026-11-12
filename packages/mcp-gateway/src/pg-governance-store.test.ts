@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Asset, KnowledgeEntry, RightsRecord, SkillUsageRecord, UsageRecord } from '@ai-native-dam/shared-schema';
+import type { Asset, KnowledgeEntry, RightsRecord, SkillUsageRecord, SystemSpec, UsageRecord } from '@ai-native-dam/shared-schema';
 import { openPgBackend } from './pg-backend.js';
 import { PgGovernanceStore } from './pg-governance-store.js';
 import { PgSkillStore } from './pg-skill-store.js';
@@ -62,6 +62,21 @@ const skillUsage: SkillUsageRecord = {
   appliedAt: '2026-01-03T00:00:00.000Z',
 };
 
+const spec: SystemSpec = {
+  id: 'spec-0001',
+  title: 'Campaign Ops Console',
+  businessDomain: 'content-ops',
+  requirements: 'Editors need a console.',
+  entities: [{ name: 'post', fields: [{ name: 'id', type: 'string', required: true }], permissions: ['read'] }],
+  workflows: ['schedule post'],
+  sourceSkillIds: ['operations:project-context'],
+  sourceKnowledgeIds: ['kn-0001'],
+  status: 'draft',
+  createdAt: '2026-01-04T00:00:00.000Z',
+  approvedAt: null,
+  approvedBy: null,
+};
+
 const dirs: string[] = [];
 async function tempDir(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'dam-pggov-'));
@@ -77,7 +92,7 @@ afterEach(async () => {
 });
 
 describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
-  it('round-trips all five collections', async () => {
+  it('round-trips all six collections', async () => {
     const backend = await openPgBackend({ dataDir: await tempDir() });
     const store = await PgGovernanceStore.over(backend.db);
 
@@ -86,12 +101,16 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     await store.appendUsage(usage);
     await store.putKnowledge(entry);
     await store.appendSkillUsage(skillUsage);
+    await store.putSpec(spec);
 
     expect(await store.getAsset(asset.id)).toEqual(asset);
     expect(await store.getRights(asset.id)).toEqual(rights);
     expect(await store.listUsage(asset.id)).toEqual([usage]);
     expect(await store.getKnowledge(entry.id)).toEqual(entry);
     expect(await store.listSkillUsage(skillUsage.skillId)).toEqual([skillUsage]);
+    expect(await store.getSpec(spec.id)).toEqual(spec);
+    expect(await store.listSpecs('draft')).toEqual([spec]);
+    expect(await store.listSpecs('approved')).toEqual([]);
 
     const joined = await store.listAssetsWithRights();
     expect(joined).toHaveLength(1);
@@ -127,6 +146,7 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     await s1.appendUsage(usage);
     await s1.putKnowledge({ ...entry, status: 'approved', approvedAt: '2026-01-02T00:00:00.000Z' });
     await s1.appendSkillUsage(skillUsage);
+    await s1.putSpec({ ...spec, status: 'approved', approvedAt: '2026-01-05T00:00:00.000Z', approvedBy: 'editor' });
     await first.close();
 
     const second = await openPgBackend({ dataDir: dir });
@@ -135,6 +155,10 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     expect((await s2.getKnowledge(entry.id))?.status).toBe('approved');
     expect(await s2.listUsage()).toHaveLength(1);
     expect(await s2.listSkillUsage()).toHaveLength(1);
+    const reloaded = await s2.getSpec(spec.id);
+    expect(reloaded?.status).toBe('approved');
+    expect(reloaded?.approvedBy).toBe('editor');
+    expect(reloaded?.entities).toEqual(spec.entities);
     await second.close();
   });
 });

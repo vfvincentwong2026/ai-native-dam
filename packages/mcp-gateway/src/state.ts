@@ -4,6 +4,7 @@ import type {
   RightsRecord,
   Skill,
   SkillUsageRecord,
+  SystemSpec,
   UsageRecord,
 } from '@ai-native-dam/shared-schema';
 
@@ -25,6 +26,8 @@ export interface GatewayState {
   skills: Map<string, Skill>;
   /** Skill application records — feeds the future distillation gate (N uses). */
   skillUsage: SkillUsageRecord[];
+  /** system spec id → spec (drafts through approved) */
+  specs: Map<string, SystemSpec>;
 }
 
 export interface StateSeed {
@@ -34,6 +37,7 @@ export interface StateSeed {
   knowledge?: KnowledgeEntry[];
   skills?: Skill[];
   skillUsage?: SkillUsageRecord[];
+  specs?: SystemSpec[];
 }
 
 export function createState(seed: StateSeed = {}): GatewayState {
@@ -44,6 +48,7 @@ export function createState(seed: StateSeed = {}): GatewayState {
     knowledge: new Map(),
     skills: new Map(),
     skillUsage: [],
+    specs: new Map(),
   };
   for (const asset of seed.assets ?? []) state.assets.set(asset.id, asset);
   for (const rights of seed.rights ?? []) state.rights.set(rights.assetId, rights);
@@ -51,5 +56,6 @@ export function createState(seed: StateSeed = {}): GatewayState {
   for (const entry of seed.knowledge ?? []) state.knowledge.set(entry.id, entry);
   for (const skill of seed.skills ?? []) state.skills.set(`${skill.id}@${skill.version}`, skill);
   state.skillUsage.push(...(seed.skillUsage ?? []));
+  for (const spec of seed.specs ?? []) state.specs.set(spec.id, spec);
   return state;
 }

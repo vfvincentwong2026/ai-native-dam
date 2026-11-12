@@ -14,6 +14,8 @@ import {
   SetRightsInput,
   WriteKnowledgeInput,
   ApproveKnowledgeInput,
+  GenerateSystemSpecInput,
+  SubmitSystemSpecInput,
   type Asset,
   type KnowledgeEntry,
   type McpScope,
@@ -21,6 +23,8 @@ import {
   type RiskLevel,
   type Skill,
   type SkillUsageRecord,
+  type SystemEntity,
+  type SystemSpec,
   type UsageRecord,
 } from '@ai-native-dam/shared-schema';
 import { checkUse, searchAssets, type AssetWithRights } from '@ai-native-dam/governance';
@@ -504,6 +508,147 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       };
       await ctx.store.appendSkillUsage(record);
       return { usageId: record.id, applied: true };
+    },
+  },
+  {
+    name: 'generate_system_spec',
+    description:
+      'Draft a System Spec from requirements plus approved skills/knowledge. Gated by approval. ' +
+      'Draft only — does not trigger code generation; submit the draft with submit_system_spec. ' +
+      'Every source_skill_id/source_knowledge_id must resolve to an approved entry; the draft ' +
+      'records that provenance. When entities are omitted a deterministic scaffold entity is drafted.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', minLength: 1 },
+        business_domain: { type: 'string', minLength: 1 },
+        requirements: { type: 'string', minLength: 1, description: 'Free-text requirements the draft is built from' },
+        entities: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              fields: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    type: { type: 'string', enum: ['string', 'number', 'boolean', 'datetime', 'json'] },
+                    required: { type: 'boolean' },
+                    description: { type: 'string' },
+                  },
+                  required: ['name', 'type', 'required'],
+                },
+              },
+              permissions: { type: 'array', items: { type: 'string' }, default: ['read'] },
+            },
+            required: ['name', 'fields'],
+          },
+        },
+        workflows: { type: 'array', items: { type: 'string' }, default: [] },
+        source_skill_ids: { type: 'array', items: { type: 'string' }, default: [], description: 'Approved skill ids this spec builds on' },
+        source_knowledge_ids: { type: 'array', items: { type: 'string' }, default: [], description: 'Approved knowledge entry ids this spec builds on' },
+      },
+      required: ['title', 'business_domain', 'requirements'],
+    },
+    schema: GenerateSystemSpecInput,
+    handler: async (args: z.infer<typeof GenerateSystemSpecInput>, ctx: ToolContext) => {
+      // Provenance gate: a spec can only build on approved capabilities/knowledge.
+      if (args.sourceSkillIds.length > 0) {
+        const approved = await ctx.skillStore.search({ onlyApproved: true });
+        for (const sid of args.sourceSkillIds) {
+          if (!approved.some(s => s.id === sid)) {
+            throw new ToolRejection(
+              'skill_not_approved',
+              `Source skill ${sid} has no approved version; a spec can only build on approved skills`,
+            );
+          }
+        }
+      }
+      for (const kid of args.sourceKnowledgeIds) {
+        const entry = await ctx.store.getKnowledge(kid);
+        if (!entry) {
+          throw new ToolRejection('knowledge_not_found', `Source knowledge entry ${kid} does not exist`);
+        }
+        if (entry.status !== 'approved') {
+          throw new ToolRejection(
+            'knowledge_not_approved',
+            `Source knowledge entry ${kid} has status ${entry.status}; only approved entries can source a spec`,
+          );
+        }
+      }
+      const slug = args.businessDomain.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'core';
+      const entities: SystemEntity[] = args.entities ?? [{
+        name: `${slug}_record`,
+        fields: [
+          { name: 'id', type: 'string', required: true, description: 'Primary key' },
+          { name: 'title', type: 'string', required: true },
+          { name: 'status', type: 'string', required: true, description: 'Lifecycle state' },
+          { name: 'created_at', type: 'datetime', required: true },
+        ],
+        permissions: ['read'],
+      }];
+      const spec: SystemSpec = {
+        id: `spec-${randomUUID()}`,
+        title: args.title,
+        businessDomain: args.businessDomain,
+        requirements: args.requirements,
+        entities,
+        workflows: args.workflows,
+        sourceSkillIds: args.sourceSkillIds,
+        sourceKnowledgeIds: args.sourceKnowledgeIds,
+        status: 'draft',
+        createdAt: new Date().toISOString(),
+        approvedAt: null,
+        approvedBy: null,
+      };
+      await ctx.store.putSpec(spec);
+      return { specId: spec.id, status: spec.status, spec };
+    },
+  },
+  {
+    name: 'submit_system_spec',
+    description:
+      'Submit a draft System Spec for approval; the confirmation token IS the approval, so the ' +
+      'spec transitions draft → approved with approver and timestamp stamped from the authenticated ' +
+      'principal. High risk, always gated. Does not modify spec content and cannot reopen an ' +
+      'approved spec — draft a new spec instead.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        spec_id: { type: 'string', minLength: 1, description: 'Spec id returned by generate_system_spec' },
+      },
+      required: ['spec_id'],
+    },
+    schema: SubmitSystemSpecInput,
+    handler: async (args: z.infer<typeof SubmitSystemSpecInput>, ctx: ToolContext) => {
+      const spec = await ctx.store.getSpec(args.specId);
+      if (!spec) {
+        throw new ToolRejection('spec_not_found', `System spec ${args.specId} does not exist`);
+      }
+      if (spec.status !== 'draft') {
+        throw new ToolRejection(
+          'invalid_status_transition',
+          `System spec ${args.specId} has status ${spec.status}; only drafts can be submitted`,
+        );
+      }
+      const approved: SystemSpec = {
+        ...spec,
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+        approvedBy: ctx.principal.id,
+      };
+      await ctx.store.putSpec(approved);
+      return { spec: approved };
     },
   },
 ];

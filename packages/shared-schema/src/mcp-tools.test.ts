@@ -16,6 +16,7 @@ const DOCUMENTED_TOOLS = [
   'revoke_skill',
   'approve_knowledge',
   'generate_system_spec',
+  'submit_system_spec',
   'request_distillation',
   'register_lora_adapter',
 ];

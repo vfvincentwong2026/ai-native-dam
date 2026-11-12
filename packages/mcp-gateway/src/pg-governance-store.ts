@@ -3,6 +3,8 @@ import type {
   KnowledgeEntry,
   RightsRecord,
   SkillUsageRecord,
+  SystemSpec,
+  SystemSpecStatus,
   UsageRecord,
 } from '@ai-native-dam/shared-schema';
 import type { AssetWithRights } from '@ai-native-dam/governance';
@@ -60,6 +62,20 @@ CREATE TABLE IF NOT EXISTS skill_usage_records (
   context          text NOT NULL,
   applied_by       text NOT NULL,
   applied_at       timestamptz NOT NULL
+);
+CREATE TABLE IF NOT EXISTS system_specs (
+  id                   text PRIMARY KEY,
+  title                text NOT NULL,
+  business_domain      text NOT NULL,
+  requirements         text NOT NULL,
+  entities             jsonb NOT NULL,
+  workflows            text[] NOT NULL DEFAULT '{}',
+  source_skill_ids     text[] NOT NULL DEFAULT '{}',
+  source_knowledge_ids text[] NOT NULL DEFAULT '{}',
+  status               text NOT NULL CHECK (status IN ('draft','pending_approval','approved','rejected','generated')),
+  created_at           timestamptz NOT NULL,
+  approved_at          timestamptz,
+  approved_by          text
 )`;
 
 /** pg and PGlite both return Date for timestamptz; normalize to ISO strings. */
@@ -128,6 +144,23 @@ function rowToSkillUsage(r: any): SkillUsageRecord {
     context: r.context,
     appliedBy: r.applied_by,
     appliedAt: iso(r.applied_at) as string,
+  };
+}
+
+function rowToSpec(r: any): SystemSpec {
+  return {
+    id: r.id,
+    title: r.title,
+    businessDomain: r.business_domain,
+    requirements: r.requirements,
+    entities: r.entities,
+    workflows: r.workflows ?? [],
+    sourceSkillIds: r.source_skill_ids ?? [],
+    sourceKnowledgeIds: r.source_knowledge_ids ?? [],
+    status: r.status,
+    createdAt: iso(r.created_at) as string,
+    approvedAt: iso(r.approved_at),
+    approvedBy: r.approved_by ?? null,
   };
 }
 
@@ -268,5 +301,38 @@ export class PgGovernanceStore implements GovernanceStore {
       ? await this.db.query('SELECT * FROM skill_usage_records WHERE skill_id = $1 ORDER BY applied_at, id', [skillId])
       : await this.db.query('SELECT * FROM skill_usage_records ORDER BY applied_at, id');
     return rows.map(rowToSkillUsage);
+  }
+
+  async getSpec(id: string): Promise<SystemSpec | undefined> {
+    const { rows } = await this.db.query('SELECT * FROM system_specs WHERE id = $1', [id]);
+    return rows[0] ? rowToSpec(rows[0]) : undefined;
+  }
+
+  async putSpec(spec: SystemSpec): Promise<void> {
+    await this.db.query(
+      `INSERT INTO system_specs (id, title, business_domain, requirements, entities, workflows,
+                                 source_skill_ids, source_knowledge_ids, status, created_at, approved_at, approved_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       ON CONFLICT (id) DO UPDATE SET
+         title = EXCLUDED.title, business_domain = EXCLUDED.business_domain,
+         requirements = EXCLUDED.requirements, entities = EXCLUDED.entities,
+         workflows = EXCLUDED.workflows, source_skill_ids = EXCLUDED.source_skill_ids,
+         source_knowledge_ids = EXCLUDED.source_knowledge_ids, status = EXCLUDED.status,
+         created_at = EXCLUDED.created_at, approved_at = EXCLUDED.approved_at,
+         approved_by = EXCLUDED.approved_by`,
+      [
+        spec.id, spec.title, spec.businessDomain, spec.requirements,
+        JSON.stringify(spec.entities), spec.workflows,
+        spec.sourceSkillIds, spec.sourceKnowledgeIds, spec.status,
+        spec.createdAt, spec.approvedAt, spec.approvedBy,
+      ],
+    );
+  }
+
+  async listSpecs(status?: SystemSpecStatus): Promise<SystemSpec[]> {
+    const { rows } = status
+      ? await this.db.query('SELECT * FROM system_specs WHERE status = $1 ORDER BY created_at, id', [status])
+      : await this.db.query('SELECT * FROM system_specs ORDER BY created_at, id');
+    return rows.map(rowToSpec);
   }
 }

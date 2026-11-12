@@ -3,6 +3,8 @@ import type {
   KnowledgeEntry,
   RightsRecord,
   SkillUsageRecord,
+  SystemSpec,
+  SystemSpecStatus,
   UsageRecord,
 } from '@ai-native-dam/shared-schema';
 import type { AssetWithRights } from '@ai-native-dam/governance';
@@ -10,9 +12,9 @@ import type { GatewayState } from './state.js';
 
 /**
  * Persistence interface for the governance collections (assets, rights,
- * usage, knowledge, skill usage). Tool handlers only know this interface;
- * like SkillStore (ADR 0004) it can be backed by in-memory state, embedded
- * PGlite, or a real Postgres pool without touching tool code.
+ * usage, knowledge, skill usage, system specs). Tool handlers only know this
+ * interface; like SkillStore (ADR 0004) it can be backed by in-memory state,
+ * embedded PGlite, or a real Postgres pool without touching tool code.
  */
 export interface KnowledgeSearchFilter {
   query: string;
@@ -40,6 +42,10 @@ export interface GovernanceStore {
 
   appendSkillUsage(record: SkillUsageRecord): Promise<void>;
   listSkillUsage(skillId?: string): Promise<SkillUsageRecord[]>;
+
+  getSpec(id: string): Promise<SystemSpec | undefined>;
+  putSpec(spec: SystemSpec): Promise<void>;
+  listSpecs(status?: SystemSpecStatus): Promise<SystemSpec[]>;
 
   close?(): Promise<void>;
 }
@@ -105,5 +111,18 @@ export class MemoryGovernanceStore implements GovernanceStore {
 
   async listSkillUsage(skillId?: string): Promise<SkillUsageRecord[]> {
     return skillId ? this.state.skillUsage.filter(u => u.skillId === skillId) : [...this.state.skillUsage];
+  }
+
+  async getSpec(id: string): Promise<SystemSpec | undefined> {
+    return this.state.specs.get(id);
+  }
+
+  async putSpec(spec: SystemSpec): Promise<void> {
+    this.state.specs.set(spec.id, spec);
+  }
+
+  async listSpecs(status?: SystemSpecStatus): Promise<SystemSpec[]> {
+    const all = [...this.state.specs.values()];
+    return status ? all.filter(s => s.status === status) : all;
   }
 }

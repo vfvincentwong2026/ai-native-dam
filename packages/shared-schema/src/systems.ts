@@ -25,6 +25,7 @@ export const SystemSpec = z.object({
   id: z.string(),
   title: z.string(),
   businessDomain: z.string(),
+  requirements: z.string(),
   entities: z.array(SystemEntity).min(1),
   workflows: z.array(z.string()).default([]),
   sourceSkillIds: z.array(z.string()).default([]),
@@ -32,6 +33,7 @@ export const SystemSpec = z.object({
   status: SystemSpecStatus,
   createdAt: z.string().datetime(),
   approvedAt: z.string().datetime().nullable(),
+  approvedBy: z.string().nullable(),
 });
 export type SystemSpec = z.infer<typeof SystemSpec>;
 
@@ -39,6 +41,9 @@ export const GenerateSystemSpecInput = z.object({
   title: z.string(),
   businessDomain: z.string(),
   requirements: z.string(),
+  /** Caller-supplied draft entities; when omitted the gateway drafts a scaffold entity. */
+  entities: z.array(SystemEntity).min(1).optional(),
+  workflows: z.array(z.string()).default([]),
   sourceSkillIds: z.array(z.string()).default([]),
   sourceKnowledgeIds: z.array(z.string()).default([]),
 });
@@ -50,3 +55,13 @@ export const GenerateSystemSpecOutput = z.object({
   spec: SystemSpec,
 });
 export type GenerateSystemSpecOutput = z.infer<typeof GenerateSystemSpecOutput>;
+
+export const SubmitSystemSpecInput = z.object({
+  specId: z.string(),
+});
+export type SubmitSystemSpecInput = z.infer<typeof SubmitSystemSpecInput>;
+
+export const SubmitSystemSpecOutput = z.object({
+  spec: SystemSpec,
+});
+export type SubmitSystemSpecOutput = z.infer<typeof SubmitSystemSpecOutput>;

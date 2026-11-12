@@ -375,3 +375,94 @@ describe('apply_skill', () => {
     expect(missing.usage_id).toBeNull();
   });
 });
+
+describe('generate_system_spec / submit_system_spec', () => {
+  const specArgs = {
+    title: 'Campaign Ops Console',
+    business_domain: 'content-ops',
+    requirements: 'Editors need a console to schedule and review campaign posts.',
+    workflows: ['schedule post', 'review post'],
+  };
+
+  async function gated(name: string, args: Record<string, unknown>) {
+    const first = unwrapToolJson({ body: (await callTool(name, args)).body });
+    expect(first.approval_required).toBe(true);
+    return unwrapToolJson({ body: (await callTool(name, { ...args, _confirmation: first.confirmation_token })).body });
+  }
+
+  it('drafts a spec with a scaffold entity and lands as draft', async () => {
+    const out = await gated('generate_system_spec', specArgs);
+    expect(out.spec_id).toMatch(/^spec-/);
+    expect(out.status).toBe('draft');
+    expect(out.spec.status).toBe('draft');
+    expect(out.spec.approved_by).toBeNull();
+    expect(out.spec.entities).toHaveLength(1);
+    expect(out.spec.entities[0].name).toBe('content_ops_record');
+    expect(out.spec.workflows).toEqual(['schedule post', 'review post']);
+    expect(gatewayState.specs.get(out.spec_id)?.title).toBe('Campaign Ops Console');
+  });
+
+  it('rejects provenance that is not approved (skill and knowledge)', async () => {
+    // pending skill (never approved) cannot source a spec
+    const regArgs = { id: 'content:unapproved-src', version: '0.1.0', name: 'Unapproved Source', description: 'Never approved skill.', domain: 'content' };
+    const r1 = unwrapToolJson({ body: (await callTool('register_skill', regArgs)).body });
+    await callTool('register_skill', { ...regArgs, _confirmation: r1.confirmation_token });
+
+    const bad = await gated('generate_system_spec', { ...specArgs, source_skill_ids: ['content:unapproved-src'] });
+    expect(bad.rejected).toBe(true);
+    expect(bad.reason).toBe('skill_not_approved');
+
+    const missingKn = await gated('generate_system_spec', { ...specArgs, source_knowledge_ids: ['kn-ghost'] });
+    expect(missingKn.rejected).toBe(true);
+    expect(missingKn.reason).toBe('knowledge_not_found');
+
+    // pending_approval knowledge cannot source a spec either
+    const wArgs = { title: 'Draft SOP', layer: 'manual', content: 'Unreviewed content here.' };
+    const w1 = unwrapToolJson({ body: (await callTool('write_knowledge', wArgs)).body });
+    const w2 = unwrapToolJson({ body: (await callTool('write_knowledge', { ...wArgs, _confirmation: w1.confirmation_token })).body });
+    const pendingKn = await gated('generate_system_spec', { ...specArgs, source_knowledge_ids: [w2.entry.id] });
+    expect(pendingKn.rejected).toBe(true);
+    expect(pendingKn.reason).toBe('knowledge_not_approved');
+  });
+
+  it('accepts approved provenance and caller-supplied entities', async () => {
+    const regArgs = { id: 'content:approved-src', version: '1.0.0', name: 'Approved Source', description: 'Approved source skill.', domain: 'content' };
+    const r1 = unwrapToolJson({ body: (await callTool('register_skill', regArgs)).body });
+    await callTool('register_skill', { ...regArgs, _confirmation: r1.confirmation_token });
+    const a1 = unwrapToolJson({ body: (await callTool('approve_skill', { id: regArgs.id, version: regArgs.version })).body });
+    await callTool('approve_skill', { id: regArgs.id, version: regArgs.version, _confirmation: a1.confirmation_token });
+
+    const wArgs = { title: 'Approved SOP', layer: 'manual', content: 'Reviewed and approved content.' };
+    const w1 = unwrapToolJson({ body: (await callTool('write_knowledge', wArgs)).body });
+    const w2 = unwrapToolJson({ body: (await callTool('write_knowledge', { ...wArgs, _confirmation: w1.confirmation_token })).body });
+    const ap1 = unwrapToolJson({ body: (await callTool('approve_knowledge', { id: w2.entry.id })).body });
+    await callTool('approve_knowledge', { id: w2.entry.id, _confirmation: ap1.confirmation_token });
+
+    const out = await gated('generate_system_spec', {
+      ...specArgs,
+      source_skill_ids: ['content:approved-src'],
+      source_knowledge_ids: [w2.entry.id],
+      entities: [{ name: 'post', fields: [{ name: 'id', type: 'string', required: true }], permissions: ['read', 'write'] }],
+    });
+    expect(out.spec.entities[0].name).toBe('post');
+    expect(out.spec.source_skill_ids).toEqual(['content:approved-src']);
+    expect(out.spec.source_knowledge_ids).toEqual([w2.entry.id]);
+  });
+
+  it('submit approves a draft exactly once, stamping the principal', async () => {
+    const drafted = await gated('generate_system_spec', specArgs);
+    const submitted = await gated('submit_system_spec', { spec_id: drafted.spec_id });
+    expect(submitted.spec.status).toBe('approved');
+    expect(submitted.spec.approved_by).toBe('editor');
+    expect(submitted.spec.approved_at).toBeTruthy();
+
+    // second submit on the same id is rejected, content untouched
+    const again = await gated('submit_system_spec', { spec_id: drafted.spec_id });
+    expect(again.rejected).toBe(true);
+    expect(again.reason).toBe('invalid_status_transition');
+
+    const missing = await gated('submit_system_spec', { spec_id: 'spec-nope' });
+    expect(missing.rejected).toBe(true);
+    expect(missing.reason).toBe('spec_not_found');
+  });
+});

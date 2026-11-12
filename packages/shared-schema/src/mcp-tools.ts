@@ -25,6 +25,8 @@ import {
 import {
   GenerateSystemSpecInput,
   GenerateSystemSpecOutput,
+  SubmitSystemSpecInput,
+  SubmitSystemSpecOutput,
 } from './systems.js';
 import {
   SearchKnowledgeInput,
@@ -172,12 +174,26 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     name: 'generate_system_spec',
     description:
       'Draft a System Spec from conversation, skills, and knowledge. Gated by approval. ' +
-      'Draft only — does not trigger code generation; submit the draft for approval with submit_system_spec.',
+      'Draft only — does not trigger code generation; submit the draft for approval with submit_system_spec. ' +
+      'Every sourceSkillId/sourceKnowledgeId must resolve to an approved registry/knowledge entry.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
     input: GenerateSystemSpecInput,
     output: GenerateSystemSpecOutput,
+  },
+  {
+    name: 'submit_system_spec',
+    description:
+      'Submit a draft System Spec for approval; the confirmation token IS the approval, ' +
+      'so an approved spec is frozen and generation may run against it. High risk, always gated. ' +
+      'Does not modify spec content, cannot reopen an approved spec, and cannot submit a missing ' +
+      'or already-decided spec — register a new draft instead.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    input: SubmitSystemSpecInput,
+    output: SubmitSystemSpecOutput,
   },
   {
     name: 'search_knowledge',
