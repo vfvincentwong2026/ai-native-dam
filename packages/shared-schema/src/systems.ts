@@ -65,3 +65,15 @@ export const SubmitSystemSpecOutput = z.object({
   spec: SystemSpec,
 });
 export type SubmitSystemSpecOutput = z.infer<typeof SubmitSystemSpecOutput>;
+
+export const SearchSpecsInput = z.object({
+  status: SystemSpecStatus.optional(),
+  query: z.string().optional(),
+  limit: z.number().int().min(1).max(50).default(20),
+});
+export type SearchSpecsInput = z.infer<typeof SearchSpecsInput>;
+
+export const SearchSpecsOutput = z.object({
+  specs: z.array(SystemSpec),
+});
+export type SearchSpecsOutput = z.infer<typeof SearchSpecsOutput>;

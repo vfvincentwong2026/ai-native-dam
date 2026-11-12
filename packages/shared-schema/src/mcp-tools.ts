@@ -27,6 +27,8 @@ import {
   GenerateSystemSpecOutput,
   SubmitSystemSpecInput,
   SubmitSystemSpecOutput,
+  SearchSpecsInput,
+  SearchSpecsOutput,
 } from './systems.js';
 import {
   SearchKnowledgeInput,
@@ -194,6 +196,17 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     scopes: ['Edit'],
     input: SubmitSystemSpecInput,
     output: SubmitSystemSpecOutput,
+  },
+  {
+    name: 'search_specs',
+    description:
+      'Query System Specs by status and title/domain substring. Read-only; ' +
+      'drafts are visible to all scopes so reviewers can find work awaiting submit_system_spec.',
+    riskLevel: 'low',
+    gated: false,
+    scopes: ['Suggest', 'Read', 'Edit'],
+    input: SearchSpecsInput,
+    output: SearchSpecsOutput,
   },
   {
     name: 'search_knowledge',

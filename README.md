@@ -306,6 +306,7 @@ The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each
 | `apply_skill` | medium | ✅ | Invoke a skill version; records usage against provenance |
 | `generate_system_spec` | medium | ✅ | Draft a System Spec from conversation + skills + knowledge |
 | `submit_system_spec` | high | ✅ | Submit for approval; generation runs **only after approval** |
+| `search_specs` | low | — | Query System Specs by status and title/domain substring |
 | `register_generated_system` | high | ✅ | Register the output as a governed asset with full provenance |
 
 ### Distillation

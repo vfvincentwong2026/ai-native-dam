@@ -16,6 +16,7 @@ import {
   ApproveKnowledgeInput,
   GenerateSystemSpecInput,
   SubmitSystemSpecInput,
+  SearchSpecsInput,
   type Asset,
   type KnowledgeEntry,
   type McpScope,
@@ -649,6 +650,32 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       };
       await ctx.store.putSpec(approved);
       return { spec: approved };
+    },
+  },
+  {
+    name: 'search_specs',
+    description:
+      'Query System Specs by status and title/domain substring. Read-only; ' +
+      'drafts are visible so reviewers can find work awaiting submit_system_spec.',
+    riskLevel: 'low',
+    gated: false,
+    scopes: ['Suggest', 'Read', 'Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['draft', 'pending_approval', 'approved', 'rejected', 'generated'] },
+        query: { type: 'string', description: 'Substring match on title and business domain' },
+        limit: { type: 'integer', default: 20, maximum: 50 },
+      },
+    },
+    schema: SearchSpecsInput,
+    handler: async (args: z.infer<typeof SearchSpecsInput>, ctx: ToolContext) => {
+      let specs = await ctx.store.listSpecs(args.status);
+      if (args.query) {
+        const q = args.query.toLowerCase();
+        specs = specs.filter(s => `${s.title} ${s.businessDomain}`.toLowerCase().includes(q));
+      }
+      return { specs: specs.slice(0, args.limit) };
     },
   },
 ];

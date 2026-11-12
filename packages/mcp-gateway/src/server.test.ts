@@ -466,3 +466,20 @@ describe('generate_system_spec / submit_system_spec', () => {
     expect(missing.reason).toBe('spec_not_found');
   });
 });
+
+describe('search_specs', () => {
+  it('lists specs with status filter and substring query, read-scoped allowed', async () => {
+    const g1 = unwrapToolJson({ body: (await callTool('generate_system_spec', { title: 'Spec Search Target', business_domain: 'search-qa', requirements: 'find me' })).body });
+    await callTool('generate_system_spec', { title: 'Spec Search Target', business_domain: 'search-qa', requirements: 'find me', _confirmation: g1.confirmation_token });
+
+    const all = unwrapToolJson({ body: (await callTool('search_specs', {}, 'read-token')).body });
+    expect(all.specs.some((s: { title: string }) => s.title === 'Spec Search Target')).toBe(true);
+
+    const drafts = unwrapToolJson({ body: (await callTool('search_specs', { status: 'draft' }, 'read-token')).body });
+    expect(drafts.specs.every((s: { status: string }) => s.status === 'draft')).toBe(true);
+    expect(drafts.specs.some((s: { title: string }) => s.title === 'Spec Search Target')).toBe(true);
+
+    const miss = unwrapToolJson({ body: (await callTool('search_specs', { query: 'no-such-spec-xyz' }, 'read-token')).body });
+    expect(miss.specs).toHaveLength(0);
+  });
+});
