@@ -35,18 +35,18 @@ export interface ApprovalEntry {
 }
 
 export interface ApprovalStore {
-  get(key: string): ApprovalEntry | undefined;
-  put(entry: ApprovalEntry): void;
+  get(key: string): Promise<ApprovalEntry | undefined>;
+  put(entry: ApprovalEntry): Promise<void>;
 }
 
 export class InMemoryApprovalStore implements ApprovalStore {
   private readonly entries = new Map<string, ApprovalEntry>();
 
-  get(key: string): ApprovalEntry | undefined {
+  async get(key: string): Promise<ApprovalEntry | undefined> {
     return this.entries.get(key);
   }
 
-  put(entry: ApprovalEntry): void {
+  async put(entry: ApprovalEntry): Promise<void> {
     this.entries.set(entry.key, entry);
   }
 }
@@ -67,16 +67,16 @@ export class ApprovalGate {
    * Check whether a gated call may proceed. Pass the raw tool arguments
    * (without `_confirmation`) and the quoted confirmation token, if any.
    */
-  require(
+  async require(
     toolName: string,
     principalId: string,
     args: unknown,
     confirmationToken?: string,
-  ): ApprovalCheck {
+  ): Promise<ApprovalCheck> {
     const key = approvalKey(toolName, principalId, args);
 
     if (confirmationToken !== undefined) {
-      const entry = this.store.get(key);
+      const entry = await this.store.get(key);
       const valid =
         entry !== undefined &&
         !entry.consumed &&
@@ -85,7 +85,7 @@ export class ApprovalGate {
       if (!valid) {
         return { status: 'invalid_token' };
       }
-      this.store.put({ ...entry, consumed: true });
+      await this.store.put({ ...entry, consumed: true });
       return { status: 'approved' };
     }
 
@@ -98,7 +98,7 @@ export class ApprovalGate {
       consumed: false,
     };
     // Re-issuing overwrites any previous unconsumed token for the same call.
-    this.store.put(entry);
+    await this.store.put(entry);
     return {
       status: 'confirmation_required',
       confirmationToken: entry.token,

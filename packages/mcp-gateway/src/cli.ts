@@ -8,16 +8,19 @@
  * When DAM_TOKENS is unset, a single development token `dev-token` with all
  * scopes is issued. Never run like this in production.
  *
- * Persistence (first match wins) — covers the Skill Registry and every
- * governance collection (assets, rights, usage, knowledge, skill usage):
+ * Persistence (first match wins) — covers the Skill Registry, every
+ * governance collection (assets, rights, usage, knowledge, skill usage),
+ * and approval confirmation tokens:
  *   DAM_DATABASE_URL  postgres://user:pass@host:5432/db  (docker compose postgres)
  *   DAM_PG_DATA_DIR   ./data/pg  (embedded Postgres via PGlite, no server install)
  *   (neither)         in-memory — lost on restart, dev only
  */
 import { createGateway } from './server.js';
 import { openPgBackend, type PgBackend } from './pg-backend.js';
+import { PgApprovalStore } from './pg-approval-store.js';
 import { PgGovernanceStore } from './pg-governance-store.js';
 import { PgSkillStore } from './pg-skill-store.js';
+import type { ApprovalStore } from './approval.js';
 import type { GovernanceStore } from './governance-store.js';
 import type { SkillStore } from './skill-store.js';
 import type { TokenMap } from './auth.js';
@@ -34,6 +37,7 @@ function loadTokens(): TokenMap {
 async function createStores(): Promise<{
   skillStore?: SkillStore;
   store?: GovernanceStore;
+  approvalStore?: ApprovalStore;
   backend?: PgBackend;
 }> {
   const databaseUrl = process.env.DAM_DATABASE_URL;
@@ -50,12 +54,13 @@ async function createStores(): Promise<{
     backend,
     skillStore: await PgSkillStore.over(backend.db),
     store: await PgGovernanceStore.over(backend.db),
+    approvalStore: await PgApprovalStore.over(backend.db),
   };
 }
 
 const port = Number(process.env.MCP_PORT ?? 8080);
-const { skillStore, store, backend } = await createStores();
-const { server } = createGateway({ tokens: loadTokens(), skillStore, store });
+const { skillStore, store, approvalStore, backend } = await createStores();
+const { server } = createGateway({ tokens: loadTokens(), skillStore, store, approvalStore });
 
 server.listen(port, () => {
   console.log(`[gateway] MCP endpoint listening on http://localhost:${port}/mcp`);

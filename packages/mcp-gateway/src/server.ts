@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { resolvePrincipal, hasAnyScope, type TokenMap, type Principal } from './auth.js';
-import { ApprovalGate, InMemoryApprovalStore } from './approval.js';
+import { ApprovalGate, InMemoryApprovalStore, type ApprovalStore } from './approval.js';
 import { MemoryGovernanceStore, type GovernanceStore } from './governance-store.js';
 import { MemorySkillStore, type SkillStore } from './skill-store.js';
 import { createState, type GatewayState, type StateSeed } from './state.js';
@@ -27,6 +27,8 @@ export interface GatewayOptions {
   store?: GovernanceStore;
   /** Skill Registry persistence. Defaults to an in-memory store over state.skills. */
   skillStore?: SkillStore;
+  /** Confirmation-token persistence. Defaults to in-memory (lost on restart). */
+  approvalStore?: ApprovalStore;
   approvalTtlMs?: number;
   serverName?: string;
   serverVersion?: string;
@@ -66,7 +68,7 @@ export function createGateway(options: GatewayOptions): Gateway {
   const state = createState(options.seed);
   const store = options.store ?? new MemoryGovernanceStore(state);
   const skillStore = options.skillStore ?? new MemorySkillStore(state.skills);
-  const gate = new ApprovalGate(new InMemoryApprovalStore(), options.approvalTtlMs);
+  const gate = new ApprovalGate(options.approvalStore ?? new InMemoryApprovalStore(), options.approvalTtlMs);
   const serverName = options.serverName ?? 'ai-native-dam-gateway';
   const serverVersion = options.serverVersion ?? '0.1.0';
 
@@ -116,7 +118,7 @@ export function createGateway(options: GatewayOptions): Gateway {
         const args = wireToInternal<Record<string, unknown>>(wireArgs);
 
         if (tool.gated) {
-          const check = gate.require(
+          const check = await gate.require(
             tool.name,
             principal.id,
             wireArgs,

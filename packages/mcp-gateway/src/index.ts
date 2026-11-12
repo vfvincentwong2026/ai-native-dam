@@ -6,6 +6,7 @@ export * from './pg-backend.js';
 export * from './pg-skill-store.js';
 export * from './governance-store.js';
 export * from './pg-governance-store.js';
+export * from './pg-approval-store.js';
 export * from './tools.js';
 export * from './wire.js';
 export * from './server.js';

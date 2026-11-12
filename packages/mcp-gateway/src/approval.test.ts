@@ -4,9 +4,9 @@ import { ApprovalGate, InMemoryApprovalStore, approvalKey } from './approval.js'
 const ARGS = { asset_id: 'a1', channel: 'x' };
 
 describe('ApprovalGate', () => {
-  it('requires a confirmation token on the first call', () => {
+  it('requires a confirmation token on the first call', async () => {
     const gate = new ApprovalGate();
-    const check = gate.require('record_usage', 'alice', ARGS);
+    const check = await gate.require('record_usage', 'alice', ARGS);
     expect(check.status).toBe('confirmation_required');
     if (check.status === 'confirmation_required') {
       expect(check.confirmationToken).toBeTruthy();
@@ -14,37 +14,37 @@ describe('ApprovalGate', () => {
     }
   });
 
-  it('approves when the same arguments quote the token back', () => {
+  it('approves when the same arguments quote the token back', async () => {
     const gate = new ApprovalGate();
-    const first = gate.require('record_usage', 'alice', ARGS);
+    const first = await gate.require('record_usage', 'alice', ARGS);
     if (first.status !== 'confirmation_required') throw new Error('expected token');
-    const second = gate.require('record_usage', 'alice', ARGS, first.confirmationToken);
+    const second = await gate.require('record_usage', 'alice', ARGS, first.confirmationToken);
     expect(second.status).toBe('approved');
   });
 
-  it('rejects a wrong token', () => {
+  it('rejects a wrong token', async () => {
     const gate = new ApprovalGate();
-    gate.require('record_usage', 'alice', ARGS);
-    const check = gate.require('record_usage', 'alice', ARGS, 'wrong-token');
+    await gate.require('record_usage', 'alice', ARGS);
+    const check = await gate.require('record_usage', 'alice', ARGS, 'wrong-token');
     expect(check.status).toBe('invalid_token');
   });
 
-  it('tokens are single-use', () => {
+  it('tokens are single-use', async () => {
     const gate = new ApprovalGate();
-    const first = gate.require('record_usage', 'alice', ARGS);
+    const first = await gate.require('record_usage', 'alice', ARGS);
     if (first.status !== 'confirmation_required') throw new Error('expected token');
-    gate.require('record_usage', 'alice', ARGS, first.confirmationToken);
-    const third = gate.require('record_usage', 'alice', ARGS, first.confirmationToken);
+    await gate.require('record_usage', 'alice', ARGS, first.confirmationToken);
+    const third = await gate.require('record_usage', 'alice', ARGS, first.confirmationToken);
     expect(third.status).toBe('invalid_token');
   });
 
-  it('rejects an expired token', () => {
+  it('rejects an expired token', async () => {
     let now = 1_000_000;
     const gate = new ApprovalGate(new InMemoryApprovalStore(), 1000, () => now);
-    const first = gate.require('record_usage', 'alice', ARGS);
+    const first = await gate.require('record_usage', 'alice', ARGS);
     if (first.status !== 'confirmation_required') throw new Error('expected token');
     now += 2000; // past the 1000ms TTL
-    const check = gate.require('record_usage', 'alice', ARGS, first.confirmationToken);
+    const check = await gate.require('record_usage', 'alice', ARGS, first.confirmationToken);
     expect(check.status).toBe('invalid_token');
   });
 
@@ -56,12 +56,12 @@ describe('ApprovalGate', () => {
     expect(keyA).not.toBe(keyC);
   });
 
-  it('different principals get different tokens for identical calls', () => {
+  it('different principals get different tokens for identical calls', async () => {
     const gate = new ApprovalGate();
-    const first = gate.require('record_usage', 'alice', ARGS);
+    const first = await gate.require('record_usage', 'alice', ARGS);
     if (first.status !== 'confirmation_required') throw new Error('expected token');
     // Bob cannot spend Alice's token on the same call.
-    const asBob = gate.require('record_usage', 'bob', ARGS, first.confirmationToken);
+    const asBob = await gate.require('record_usage', 'bob', ARGS, first.confirmationToken);
     expect(asBob.status).toBe('invalid_token');
   });
 });
