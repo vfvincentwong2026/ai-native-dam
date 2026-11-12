@@ -139,6 +139,28 @@ describe('PgSkillStore (embedded PGlite)', () => {
     expect(await second.search({ onlyApproved: true })).toHaveLength(1);
     await second.close();
   });
+
+  it('revoke works from any non-revoked state and is not repeatable', async () => {
+    const store = await PgSkillStore.embedded(await tempDir());
+    await store.put(makeSkill());
+    await store.put(makeSkill({
+      id: 'operations:done-skill', version: '0.1.0', status: 'approved',
+      approvedAt: '2026-11-01T00:00:00.000Z', approvedBy: 'vincent',
+    }));
+
+    // revoke from pending_approval and from approved
+    expect((await store.revoke('operations:test-skill', '0.1.0'))?.status).toBe('revoked');
+    expect((await store.revoke('operations:done-skill', '0.1.0'))?.status).toBe('revoked');
+    // approval stamps survive revocation (audit trail)
+    expect((await store.get('operations:done-skill', '0.1.0'))?.approvedBy).toBe('vincent');
+    // repeat revoke / missing → undefined, no mutation
+    expect(await store.revoke('operations:test-skill', '0.1.0')).toBeUndefined();
+    expect(await store.revoke('operations:ghost', '0.1.0')).toBeUndefined();
+    // revoked versions leave the default search, stay in the registry
+    expect(await store.search({ onlyApproved: true })).toHaveLength(0);
+    expect(await store.search({})).toHaveLength(2);
+    await store.close();
+  });
 });
 
 describe('gateway with a persistent SkillStore', () => {
@@ -278,6 +300,56 @@ describe('gateway with a persistent SkillStore', () => {
     const afterRestart = await callTool('search_skills', {});
     expect(afterRestart.skills[0].status).toBe('approved');
     expect(afterRestart.skills[0].approved_by).toBe('editor');
+    await stopGateway();
+  });
+
+  it('revoke_skill (gated) removes a skill from default search and is not repeatable', async () => {
+    const dir = await tempDir();
+    const wireArgs = {
+      id: 'content:news-broadcast',
+      version: '0.1.0',
+      name: 'news-broadcast',
+      description: 'news brief pipeline skill',
+      domain: 'content',
+    };
+
+    await startGateway(dir);
+    const regFirst = await callTool('register_skill', wireArgs);
+    await callTool('register_skill', { ...wireArgs, _confirmation: regFirst.confirmation_token });
+    const apFirst = await callTool('approve_skill', { id: wireArgs.id, version: wireArgs.version });
+    await callTool('approve_skill', { id: wireArgs.id, version: wireArgs.version, _confirmation: apFirst.confirmation_token });
+    expect((await callTool('search_skills', {})).skills).toHaveLength(1);
+
+    const rvFirst = await callTool('revoke_skill', { id: wireArgs.id, version: wireArgs.version });
+    expect(rvFirst.approval_required).toBe(true);
+    expect(rvFirst.risk_level).toBe('high');
+    const rv = await callTool('revoke_skill', {
+      id: wireArgs.id,
+      version: wireArgs.version,
+      _confirmation: rvFirst.confirmation_token,
+    });
+    expect(rv.skill.status).toBe('revoked');
+    expect((await callTool('search_skills', {})).skills).toHaveLength(0);
+
+    // repeat revoke → rejected
+    const rv2First = await callTool('revoke_skill', { id: wireArgs.id, version: wireArgs.version });
+    const rv2 = await callTool('revoke_skill', {
+      id: wireArgs.id,
+      version: wireArgs.version,
+      _confirmation: rv2First.confirmation_token,
+    });
+    expect(rv2.rejected).toBe(true);
+    expect(rv2.reason).toBe('invalid_status_transition');
+
+    // missing → skill_not_found
+    const mFirst = await callTool('revoke_skill', { id: 'content:ghost', version: '9.9.9' });
+    const m = await callTool('revoke_skill', {
+      id: 'content:ghost',
+      version: '9.9.9',
+      _confirmation: mFirst.confirmation_token,
+    });
+    expect(m.rejected).toBe(true);
+    expect(m.reason).toBe('skill_not_found');
     await stopGateway();
   });
 });

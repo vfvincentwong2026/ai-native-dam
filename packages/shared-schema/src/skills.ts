@@ -86,3 +86,14 @@ export const ApproveSkillOutput = z.object({
   skill: Skill,
 });
 export type ApproveSkillOutput = z.infer<typeof ApproveSkillOutput>;
+
+export const RevokeSkillInput = z.object({
+  id: SkillId,
+  version: z.string().regex(SEMVER_PATTERN),
+});
+export type RevokeSkillInput = z.infer<typeof RevokeSkillInput>;
+
+export const RevokeSkillOutput = z.object({
+  skill: Skill,
+});
+export type RevokeSkillOutput = z.infer<typeof RevokeSkillOutput>;

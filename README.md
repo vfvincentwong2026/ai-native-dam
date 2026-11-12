@@ -287,6 +287,7 @@ The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each
 | `record_usage` | medium | ✅ | Log a use; rejected if rights are not `Cleared` for the target |
 | `search_knowledge` | low | — | Query by layer (`raw` / `topic` / `manual` / `rule` / `qa`) |
 | `write_knowledge` | medium | ✅ | Write a knowledge entry; requires approval |
+| `approve_knowledge` | high | ✅ | Approve a pending knowledge entry; makes it discoverable |
 
 ### Skills & Systems
 
@@ -295,6 +296,7 @@ The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each
 | `search_skills` | low | — | Query Skill Registry by domain and rights scope |
 | `register_skill` | medium | ✅ | Register a skill version with commit-pinned provenance; lands as `pending_approval` |
 | `approve_skill` | high | ✅ | Approve a pending skill version; approver identity from the authenticated principal |
+| `revoke_skill` | high | ✅ | Revoke a skill version; record and provenance kept for audit |
 | `apply_skill` | medium | ✅ | Invoke a skill version; records usage against provenance |
 | `generate_system_spec` | medium | ✅ | Draft a System Spec from conversation + skills + knowledge |
 | `submit_system_spec` | high | ✅ | Submit for approval; generation runs **only after approval** |

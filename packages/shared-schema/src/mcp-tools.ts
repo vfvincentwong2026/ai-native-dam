@@ -19,6 +19,8 @@ import {
   RegisterSkillOutput,
   ApproveSkillInput,
   ApproveSkillOutput,
+  RevokeSkillInput,
+  RevokeSkillOutput,
 } from './skills.js';
 import {
   GenerateSystemSpecInput,
@@ -29,6 +31,8 @@ import {
   SearchKnowledgeOutput,
   WriteKnowledgeInput,
   WriteKnowledgeOutput,
+  ApproveKnowledgeInput,
+  ApproveKnowledgeOutput,
 } from './knowledge.js';
 import {
   RequestDistillationInput,
@@ -152,6 +156,18 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     output: ApproveSkillOutput,
   },
   {
+    name: 'revoke_skill',
+    description:
+      'Revoke a skill version, removing it from default search results and blocking new invocations. ' +
+      'High risk, always gated. Does not delete the record or rewrite provenance; a revoked version ' +
+      'cannot be re-approved — register a new version instead.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    input: RevokeSkillInput,
+    output: RevokeSkillOutput,
+  },
+  {
     name: 'generate_system_spec',
     description:
       'Draft a System Spec from conversation, skills, and knowledge. Gated by approval. ' +
@@ -181,6 +197,18 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     scopes: ['Edit'],
     input: WriteKnowledgeInput,
     output: WriteKnowledgeOutput,
+  },
+  {
+    name: 'approve_knowledge',
+    description:
+      'Approve a pending_approval (or draft) knowledge entry, making it discoverable via search_knowledge. ' +
+      'High risk, always gated. Does not modify content or source links, and cannot revoke — revocation ' +
+      'is a separate governance action.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    input: ApproveKnowledgeInput,
+    output: ApproveKnowledgeOutput,
   },
   {
     name: 'request_distillation',

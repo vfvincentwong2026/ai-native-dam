@@ -43,3 +43,13 @@ export const WriteKnowledgeOutput = z.object({
   entry: KnowledgeEntry,
 });
 export type WriteKnowledgeOutput = z.infer<typeof WriteKnowledgeOutput>;
+
+export const ApproveKnowledgeInput = z.object({
+  id: z.string().min(1),
+});
+export type ApproveKnowledgeInput = z.infer<typeof ApproveKnowledgeInput>;
+
+export const ApproveKnowledgeOutput = z.object({
+  entry: KnowledgeEntry,
+});
+export type ApproveKnowledgeOutput = z.infer<typeof ApproveKnowledgeOutput>;

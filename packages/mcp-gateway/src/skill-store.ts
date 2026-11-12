@@ -26,6 +26,12 @@ export interface SkillStore {
    * `get` to distinguish.
    */
   approve(id: string, version: string, approvedBy: string, approvedAt: string): Promise<Skill | undefined>;
+  /**
+   * Transition any non-revoked version → revoked. The record, provenance, and
+   * approval stamps stay for audit. Returns undefined when missing or already
+   * revoked.
+   */
+  revoke(id: string, version: string): Promise<Skill | undefined>;
   /** Release connections / flush files. Optional; memory store has none. */
   close?(): Promise<void>;
 }
@@ -71,6 +77,15 @@ export class MemorySkillStore implements SkillStore {
       return undefined;
     }
     const updated: Skill = { ...skill, status: 'approved', approvedBy, approvedAt };
+    this.skills.set(key, updated);
+    return updated;
+  }
+
+  async revoke(id: string, version: string): Promise<Skill | undefined> {
+    const key = `${id}@${version}`;
+    const skill = this.skills.get(key);
+    if (!skill || skill.status === 'revoked') return undefined;
+    const updated: Skill = { ...skill, status: 'revoked' };
     this.skills.set(key, updated);
     return updated;
   }

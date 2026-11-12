@@ -6,11 +6,13 @@ import {
   RecordUsageInput,
   RegisterSkillInput,
   ApproveSkillInput,
+  RevokeSkillInput,
   SearchAssetsInput,
   SearchKnowledgeInput,
   SearchSkillsInput,
   SetRightsInput,
   WriteKnowledgeInput,
+  ApproveKnowledgeInput,
   type Asset,
   type KnowledgeEntry,
   type McpScope,
@@ -288,6 +290,39 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
     },
   },
   {
+    name: 'approve_knowledge',
+    description:
+      'Approve a pending_approval (or draft) knowledge entry, making it discoverable via search_knowledge. ' +
+      'High risk, always gated. Does not modify content or source links, and cannot revoke — revocation ' +
+      'is a separate governance action.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', minLength: 1, description: 'Knowledge entry id, e.g. kn-<uuid>' },
+      },
+      required: ['id'],
+    },
+    schema: ApproveKnowledgeInput,
+    handler: (args: z.infer<typeof ApproveKnowledgeInput>, ctx: ToolContext) => {
+      const entry = ctx.state.knowledge.get(args.id);
+      if (!entry) {
+        throw new ToolRejection('knowledge_not_found', `Knowledge entry ${args.id} does not exist`);
+      }
+      if (entry.status !== 'draft' && entry.status !== 'pending_approval') {
+        throw new ToolRejection(
+          'invalid_status_transition',
+          `Knowledge entry ${args.id} has status ${entry.status}; only draft or pending_approval can be approved`,
+        );
+      }
+      const updated: KnowledgeEntry = { ...entry, status: 'approved', approvedAt: new Date().toISOString() };
+      ctx.state.knowledge.set(entry.id, updated);
+      return { entry: updated };
+    },
+  },
+  {
     name: 'search_skills',
     description: 'Query the Skill Registry by domain and rights scope.',
     riskLevel: 'low',
@@ -393,6 +428,39 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         );
       }
       return { skill: approved };
+    },
+  },
+  {
+    name: 'revoke_skill',
+    description:
+      'Revoke a skill version, removing it from default search results and blocking new invocations. ' +
+      'High risk, always gated. Does not delete the record or rewrite provenance; a revoked version ' +
+      'cannot be re-approved — register a new version instead.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', pattern: '^[a-z0-9][a-z0-9:_-]*$', description: 'Namespaced slug, e.g. drama:script-split' },
+        version: { type: 'string', pattern: '^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$' },
+      },
+      required: ['id', 'version'],
+    },
+    schema: RevokeSkillInput,
+    handler: async (args: z.infer<typeof RevokeSkillInput>, ctx: ToolContext) => {
+      const revoked = await ctx.skillStore.revoke(args.id, args.version);
+      if (!revoked) {
+        const existing = await ctx.skillStore.get(args.id, args.version);
+        if (!existing) {
+          throw new ToolRejection('skill_not_found', `Skill ${args.id}@${args.version} is not registered`);
+        }
+        throw new ToolRejection(
+          'invalid_status_transition',
+          `Skill ${args.id}@${args.version} is already revoked; register a new version instead`,
+        );
+      }
+      return { skill: revoked };
     },
   },
 ];

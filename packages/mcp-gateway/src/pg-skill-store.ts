@@ -183,4 +183,17 @@ export class PgSkillStore implements SkillStore {
     const row = rows[0] as SkillRow | undefined;
     return row ? rowToSkill(row) : undefined;
   }
+
+  async revoke(id: string, version: string): Promise<Skill | undefined> {
+    // Atomic transition guard: revoking twice or a missing version is a no-row no-op.
+    const { rows } = await this.db.query(
+      `UPDATE skill_registry
+       SET status = 'revoked'
+       WHERE id = $1 AND version = $2 AND status <> 'revoked'
+       RETURNING *`,
+      [id, version],
+    );
+    const row = rows[0] as SkillRow | undefined;
+    return row ? rowToSkill(row) : undefined;
+  }
 }

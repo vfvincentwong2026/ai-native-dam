@@ -226,6 +226,41 @@ describe('gated write tools (two-call confirmation)', () => {
     const visible = unwrapToolJson({ body: (await callTool('search_knowledge', { query: 'posting', only_approved: false }, 'read-token')).body });
     expect(visible.entries).toHaveLength(1);
   });
+
+  it('approve_knowledge approves a pending entry; repeats and unknown ids are rejected', async () => {
+    const args = { title: 'Posting cadence rule', layer: 'rule', content: 'Cadence: at most twice a day.' };
+    const w1 = unwrapToolJson({ body: (await callTool('write_knowledge', args)).body });
+    const w2 = unwrapToolJson({ body: (await callTool('write_knowledge', { ...args, _confirmation: w1.confirmation_token })).body });
+    const id = w2.entry.id as string;
+    expect(w2.entry.status).toBe('pending_approval');
+
+    // hidden from default search before approval
+    const before = unwrapToolJson({ body: (await callTool('search_knowledge', { query: 'cadence' }, 'read-token')).body });
+    expect(before.entries).toHaveLength(0);
+
+    // approve_knowledge is a high-risk gated tool: token first, then execute
+    const a1 = unwrapToolJson({ body: (await callTool('approve_knowledge', { id })).body });
+    expect(a1.approval_required).toBe(true);
+    expect(a1.risk_level).toBe('high');
+    const a2 = unwrapToolJson({ body: (await callTool('approve_knowledge', { id, _confirmation: a1.confirmation_token })).body });
+    expect(a2.entry.status).toBe('approved');
+    expect(a2.entry.approved_at).toBeTruthy();
+
+    const after = unwrapToolJson({ body: (await callTool('search_knowledge', { query: 'cadence' }, 'read-token')).body });
+    expect(after.entries).toHaveLength(1);
+
+    // repeat approval → invalid_status_transition, not a silent re-stamp
+    const r1 = unwrapToolJson({ body: (await callTool('approve_knowledge', { id })).body });
+    const r2 = unwrapToolJson({ body: (await callTool('approve_knowledge', { id, _confirmation: r1.confirmation_token })).body });
+    expect(r2.rejected).toBe(true);
+    expect(r2.reason).toBe('invalid_status_transition');
+
+    // unknown id → knowledge_not_found
+    const m1 = unwrapToolJson({ body: (await callTool('approve_knowledge', { id: 'kn-nope' })).body });
+    const m2 = unwrapToolJson({ body: (await callTool('approve_knowledge', { id: 'kn-nope', _confirmation: m1.confirmation_token })).body });
+    expect(m2.rejected).toBe(true);
+    expect(m2.reason).toBe('knowledge_not_found');
+  });
 });
 
 describe('argument validation', () => {

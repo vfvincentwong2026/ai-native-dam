@@ -13,6 +13,8 @@ const DOCUMENTED_TOOLS = [
   'apply_skill',
   'register_skill',
   'approve_skill',
+  'revoke_skill',
+  'approve_knowledge',
   'generate_system_spec',
   'request_distillation',
   'register_lora_adapter',
