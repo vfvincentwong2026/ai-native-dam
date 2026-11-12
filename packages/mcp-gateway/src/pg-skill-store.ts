@@ -1,14 +1,8 @@
 import type { Skill, SkillDomain, SkillStatus } from '@ai-native-dam/shared-schema';
+import { openPgBackend, type PgQueryable } from './pg-backend.js';
 import type { SkillSearchFilter, SkillStore } from './skill-store.js';
 
-/**
- * Minimal query interface shared by node-postgres (`pg` Pool/Client) and
- * PGlite, so the same store serves deployment Postgres and embedded local
- * Postgres with one code path.
- */
-export interface PgQueryable {
-  query(text: string, params?: unknown[]): Promise<{ rows: unknown[] }>;
-}
+export type { PgQueryable } from './pg-backend.js';
 
 /**
  * Reference DDL — mirrored in migrations/0001_skill_registry.sql and applied
@@ -88,25 +82,23 @@ export class PgSkillStore implements SkillStore {
 
   /** Real Postgres via DATABASE_URL, e.g. postgres://dam:dam@localhost:5432/dam */
   static async connect(databaseUrl: string): Promise<PgSkillStore> {
-    // pg is CJS; named exports are not statically linkable from ESM, so go
-    // through the default export with a fallback for interop builds.
-    const mod = (await import('pg')) as unknown as {
-      Pool?: new (config: { connectionString: string }) => PgQueryable & { end(): Promise<void> };
-      default?: { Pool: new (config: { connectionString: string }) => PgQueryable & { end(): Promise<void> } };
-    };
-    const PoolCtor = mod.default?.Pool ?? mod.Pool;
-    if (!PoolCtor) throw new Error('pg Pool export not found');
-    const pool = new PoolCtor({ connectionString: databaseUrl });
-    const store = new PgSkillStore(pool, () => pool.end());
+    const backend = await openPgBackend({ databaseUrl });
+    const store = new PgSkillStore(backend.db, backend.close);
     await store.init();
     return store;
   }
 
   /** Embedded Postgres (PGlite) persisted under dataDir — no server install. */
   static async embedded(dataDir: string): Promise<PgSkillStore> {
-    const { PGlite } = await import('@electric-sql/pglite');
-    const db = new PGlite(dataDir);
-    const store = new PgSkillStore(db as unknown as PgQueryable, () => db.close());
+    const backend = await openPgBackend({ dataDir });
+    const store = new PgSkillStore(backend.db, backend.close);
+    await store.init();
+    return store;
+  }
+
+  /** Share an existing backend (one connection, several stores); the caller owns close(). */
+  static async over(db: PgQueryable): Promise<PgSkillStore> {
+    const store = new PgSkillStore(db);
     await store.init();
     return store;
   }

@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { resolvePrincipal, hasAnyScope, type TokenMap, type Principal } from './auth.js';
 import { ApprovalGate, InMemoryApprovalStore } from './approval.js';
+import { MemoryGovernanceStore, type GovernanceStore } from './governance-store.js';
 import { MemorySkillStore, type SkillStore } from './skill-store.js';
 import { createState, type GatewayState, type StateSeed } from './state.js';
 import { GATEWAY_TOOLS, findGatewayTool, ToolRejection } from './tools.js';
@@ -22,6 +23,8 @@ const CORS: Record<string, string> = {
 export interface GatewayOptions {
   tokens: TokenMap;
   seed?: StateSeed;
+  /** Governance collections persistence. Defaults to an in-memory store over state. */
+  store?: GovernanceStore;
   /** Skill Registry persistence. Defaults to an in-memory store over state.skills. */
   skillStore?: SkillStore;
   approvalTtlMs?: number;
@@ -32,6 +35,7 @@ export interface GatewayOptions {
 export interface Gateway {
   server: http.Server;
   state: GatewayState;
+  store: GovernanceStore;
   skillStore: SkillStore;
   gate: ApprovalGate;
 }
@@ -60,6 +64,7 @@ function toolResult(payload: unknown, isError = false) {
 
 export function createGateway(options: GatewayOptions): Gateway {
   const state = createState(options.seed);
+  const store = options.store ?? new MemoryGovernanceStore(state);
   const skillStore = options.skillStore ?? new MemorySkillStore(state.skills);
   const gate = new ApprovalGate(new InMemoryApprovalStore(), options.approvalTtlMs);
   const serverName = options.serverName ?? 'ai-native-dam-gateway';
@@ -142,7 +147,7 @@ export function createGateway(options: GatewayOptions): Gateway {
         }
 
         try {
-          const result = await tool.handler(parsed.data as never, { state, skillStore, principal });
+          const result = await tool.handler(parsed.data as never, { state, store, skillStore, principal });
           return rpcOk(id, { ...toolResult(internalToWire(result)), ...deprecation });
         } catch (err) {
           if (err instanceof ToolRejection) {
@@ -214,5 +219,5 @@ export function createGateway(options: GatewayOptions): Gateway {
     });
   });
 
-  return { server, state, skillStore, gate };
+  return { server, state, store, skillStore, gate };
 }

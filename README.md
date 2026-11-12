@@ -167,8 +167,10 @@ pnpm --filter @ai-native-dam/mcp-gateway start
 # → MCP endpoint on http://localhost:8080/mcp (dev token: "dev-token")
 ```
 
-The Skill Registry can be made durable without changing any tool behavior —
-set one of these before `start` (first match wins):
+The Skill Registry **and all governance collections** (assets, rights, usage
+records, knowledge entries, skill-usage records) can be made durable without
+changing any tool behavior — set one of these before `start` (first match
+wins):
 
 ```bash
 # Real Postgres (e.g. the docker compose `postgres` service):
@@ -178,10 +180,13 @@ DAM_DATABASE_URL=postgres://dam:dam@localhost:5432/dam
 DAM_PG_DATA_DIR=./data/pg
 ```
 
-With neither set, the registry stays in-memory (dev only). The schema
+With neither set, all state stays in-memory (dev only). The schema
 self-bootstraps on startup; the reference DDL is
-`packages/mcp-gateway/migrations/0001_skill_registry.sql`, and the design
-rationale is in `docs/adr/0004-skill-registry-persistence.md`.
+`packages/mcp-gateway/migrations/0001_skill_registry.sql` and
+`0002_governance_state.sql`, and the design rationale is in
+`docs/adr/0004-skill-registry-persistence.md` and
+`0005-governance-state-persistence.md`. Approval confirmation tokens are
+intentionally still in-memory (fail-closed across restarts).
 
 ```bash
 curl -s http://localhost:8080/mcp \

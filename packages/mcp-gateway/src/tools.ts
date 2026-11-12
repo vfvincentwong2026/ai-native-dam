@@ -25,6 +25,7 @@ import {
 } from '@ai-native-dam/shared-schema';
 import { checkUse, searchAssets, type AssetWithRights } from '@ai-native-dam/governance';
 import type { Principal } from './auth.js';
+import type { GovernanceStore } from './governance-store.js';
 import type { SkillStore } from './skill-store.js';
 import type { GatewayState } from './state.js';
 
@@ -41,6 +42,8 @@ export class ToolRejection extends Error {
 
 export interface ToolContext {
   state: GatewayState;
+  /** Governance collections persistence — memory, embedded PGlite, or Postgres pool. */
+  store: GovernanceStore;
   /** Skill Registry persistence — memory, embedded PGlite, or Postgres pool. */
   skillStore: SkillStore;
   principal: Principal;
@@ -80,11 +83,8 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       required: ['query'],
     },
     schema: SearchAssetsInput,
-    handler: (args: z.infer<typeof SearchAssetsInput>, ctx: ToolContext) => {
-      const pool: AssetWithRights[] = [...ctx.state.assets.values()].map(asset => ({
-        asset,
-        rights: ctx.state.rights.get(asset.id) ?? null,
-      }));
+    handler: async (args: z.infer<typeof SearchAssetsInput>, ctx: ToolContext) => {
+      const pool = await ctx.store.listAssetsWithRights();
       return searchAssets(pool, args);
     },
   },
@@ -107,12 +107,12 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       required: ['asset_id', 'channel'],
     },
     schema: CheckUsageRightsInput,
-    handler: (args: z.infer<typeof CheckUsageRightsInput>, ctx: ToolContext) => {
-      if (!ctx.state.assets.has(args.assetId)) {
+    handler: async (args: z.infer<typeof CheckUsageRightsInput>, ctx: ToolContext) => {
+      if (!(await ctx.store.getAsset(args.assetId))) {
         return { allowed: false, reason: 'asset_not_found', replacementId: null };
       }
       const now = args.at ? new Date(args.at) : new Date();
-      return checkUse(ctx.state.rights.get(args.assetId) ?? null, args, now);
+      return checkUse((await ctx.store.getRights(args.assetId)) ?? null, args, now);
     },
   },
   {
@@ -137,7 +137,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       required: ['title', 'mime_type', 'rendition_url', 'license'],
     },
     schema: CreateAssetInput,
-    handler: (args: z.infer<typeof CreateAssetInput>, ctx: ToolContext) => {
+    handler: async (args: z.infer<typeof CreateAssetInput>, ctx: ToolContext) => {
       const asset: Asset = {
         id: `asset-${randomUUID()}`,
         title: args.title,
@@ -148,7 +148,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         rightsStatus: 'Pending',
         createdAt: new Date().toISOString(),
       };
-      ctx.state.assets.set(asset.id, asset);
+      await ctx.store.putAsset(asset);
       return { asset };
     },
   },
@@ -174,8 +174,8 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       required: ['asset_id', 'license', 'territories', 'channels'],
     },
     schema: SetRightsInput,
-    handler: (args: z.infer<typeof SetRightsInput>, ctx: ToolContext) => {
-      const asset = ctx.state.assets.get(args.assetId);
+    handler: async (args: z.infer<typeof SetRightsInput>, ctx: ToolContext) => {
+      const asset = await ctx.store.getAsset(args.assetId);
       if (!asset) throw new ToolRejection('asset_not_found');
       const rights: RightsRecord = {
         assetId: args.assetId,
@@ -186,8 +186,8 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         expiresAt: args.expiresAt,
         status: args.status,
       };
-      ctx.state.rights.set(args.assetId, rights);
-      ctx.state.assets.set(args.assetId, { ...asset, rightsStatus: args.status });
+      await ctx.store.putRights(rights);
+      await ctx.store.putAsset({ ...asset, rightsStatus: args.status });
       return { rights };
     },
   },
@@ -210,10 +210,10 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       required: ['asset_id', 'channel'],
     },
     schema: RecordUsageInput,
-    handler: (args: z.infer<typeof RecordUsageInput>, ctx: ToolContext) => {
-      if (!ctx.state.assets.has(args.assetId)) throw new ToolRejection('asset_not_found');
+    handler: async (args: z.infer<typeof RecordUsageInput>, ctx: ToolContext) => {
+      if (!(await ctx.store.getAsset(args.assetId))) throw new ToolRejection('asset_not_found');
       const check = checkUse(
-        ctx.state.rights.get(args.assetId) ?? null,
+        (await ctx.store.getRights(args.assetId)) ?? null,
         { assetId: args.assetId, channel: args.channel, territory: args.territory ?? 'CN' },
       );
       if (!check.allowed) throw new ToolRejection(check.reason);
@@ -226,7 +226,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         recordedAt: new Date().toISOString(),
         recordedBy: ctx.principal.id,
       };
-      ctx.state.usage.push(usage);
+      await ctx.store.appendUsage(usage);
       return { usageId: usage.id, recorded: true as const };
     },
   },
@@ -247,13 +247,13 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       required: ['query'],
     },
     schema: SearchKnowledgeInput,
-    handler: (args: z.infer<typeof SearchKnowledgeInput>, ctx: ToolContext) => {
-      const q = args.query.toLowerCase();
-      const entries = [...ctx.state.knowledge.values()]
-        .filter(e => `${e.title} ${e.content}`.toLowerCase().includes(q))
-        .filter(e => !args.layer || e.layer === args.layer)
-        .filter(e => !args.onlyApproved || e.status === 'approved')
-        .slice(0, args.limit);
+    handler: async (args: z.infer<typeof SearchKnowledgeInput>, ctx: ToolContext) => {
+      const entries = await ctx.store.searchKnowledge({
+        query: args.query,
+        layer: args.layer,
+        onlyApproved: args.onlyApproved,
+        limit: args.limit,
+      });
       return { entries };
     },
   },
@@ -276,7 +276,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       required: ['title', 'layer', 'content'],
     },
     schema: WriteKnowledgeInput,
-    handler: (args: z.infer<typeof WriteKnowledgeInput>, ctx: ToolContext) => {
+    handler: async (args: z.infer<typeof WriteKnowledgeInput>, ctx: ToolContext) => {
       const entry: KnowledgeEntry = {
         id: `kn-${randomUUID()}`,
         title: args.title,
@@ -287,7 +287,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         createdAt: new Date().toISOString(),
         approvedAt: null,
       };
-      ctx.state.knowledge.set(entry.id, entry);
+      await ctx.store.putKnowledge(entry);
       return { entry };
     },
   },
@@ -308,8 +308,8 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       required: ['id'],
     },
     schema: ApproveKnowledgeInput,
-    handler: (args: z.infer<typeof ApproveKnowledgeInput>, ctx: ToolContext) => {
-      const entry = ctx.state.knowledge.get(args.id);
+    handler: async (args: z.infer<typeof ApproveKnowledgeInput>, ctx: ToolContext) => {
+      const entry = await ctx.store.getKnowledge(args.id);
       if (!entry) {
         throw new ToolRejection('knowledge_not_found', `Knowledge entry ${args.id} does not exist`);
       }
@@ -320,7 +320,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         );
       }
       const updated: KnowledgeEntry = { ...entry, status: 'approved', approvedAt: new Date().toISOString() };
-      ctx.state.knowledge.set(entry.id, updated);
+      await ctx.store.putKnowledge(updated);
       return { entry: updated };
     },
   },
@@ -502,7 +502,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         appliedBy: ctx.principal.id,
         appliedAt: new Date().toISOString(),
       };
-      ctx.state.skillUsage.push(record);
+      await ctx.store.appendSkillUsage(record);
       return { usageId: record.id, applied: true };
     },
   },
