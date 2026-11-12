@@ -32,6 +32,7 @@ const rights: RightsRecord = {
 
 let baseUrl: string;
 let server: ReturnType<typeof createGateway>['server'];
+let gatewayState: ReturnType<typeof createGateway>['state'];
 
 async function rpc(body: unknown, token?: string): Promise<{ status: number; body: any }> {
   const res = await fetch(`${baseUrl}/mcp`, {
@@ -62,6 +63,7 @@ beforeAll(async () => {
     seed: { assets: [asset], rights: [rights] },
   });
   server = gateway.server;
+  gatewayState = gateway.state;
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address() as AddressInfo;
   baseUrl = `http://127.0.0.1:${port}`;
@@ -316,5 +318,60 @@ describe('register_skill', () => {
     const first = unwrapToolJson({ body: (await callTool('register_skill', args)).body });
     const second = await callTool('register_skill', { ...args, _confirmation: first.confirmation_token });
     expect(second.body.error.code).toBe(-32602);
+  });
+});
+
+describe('apply_skill', () => {
+  const applyArgs = { skill_id: 'content:apply-target', version: '1.0.0', target_system_id: 'bot-x', context: 'trial run' };
+
+  async function gatedApply(args: Record<string, unknown>) {
+    const first = unwrapToolJson({ body: (await callTool('apply_skill', args)).body });
+    expect(first.approval_required).toBe(true);
+    return unwrapToolJson({ body: (await callTool('apply_skill', { ...args, _confirmation: first.confirmation_token })).body });
+  }
+
+  it('applies only approved versions and records usage with the caller principal', async () => {
+    const regArgs = {
+      id: 'content:apply-target', version: '1.0.0', name: 'Apply Target',
+      description: 'Skill used to exercise apply_skill.', domain: 'content',
+    };
+    const r1 = unwrapToolJson({ body: (await callTool('register_skill', regArgs)).body });
+    await callTool('register_skill', { ...regArgs, _confirmation: r1.confirmation_token });
+
+    // pending_approval → applied=false, no usage record written
+    const pending = await gatedApply(applyArgs);
+    expect(pending.applied).toBe(false);
+    expect(pending.reason).toBe('skill_not_approved:pending_approval');
+    expect(pending.usage_id).toBeNull();
+    const before = gatewayState.skillUsage.length;
+
+    // approve → apply succeeds and records usage
+    const a1 = unwrapToolJson({ body: (await callTool('approve_skill', { id: regArgs.id, version: regArgs.version })).body });
+    await callTool('approve_skill', { id: regArgs.id, version: regArgs.version, _confirmation: a1.confirmation_token });
+    const ok = await gatedApply(applyArgs);
+    expect(ok.applied).toBe(true);
+    expect(ok.usage_id).toMatch(/^su-/);
+
+    const added = gatewayState.skillUsage.slice(before);
+    expect(added).toHaveLength(1);
+    expect(added[0].skillId).toBe(regArgs.id);
+    expect(added[0].version).toBe(regArgs.version);
+    expect(added[0].targetSystemId).toBe('bot-x');
+    expect(added[0].appliedBy).toBe('editor');
+
+    // revoked → applied=false again
+    const rv1 = unwrapToolJson({ body: (await callTool('revoke_skill', { id: regArgs.id, version: regArgs.version })).body });
+    await callTool('revoke_skill', { id: regArgs.id, version: regArgs.version, _confirmation: rv1.confirmation_token });
+    const revoked = await gatedApply(applyArgs);
+    expect(revoked.applied).toBe(false);
+    expect(revoked.reason).toBe('skill_not_approved:revoked');
+    expect(gatewayState.skillUsage.slice(before)).toHaveLength(1); // no new record
+  });
+
+  it('returns skill_not_found for unknown versions', async () => {
+    const missing = await gatedApply({ skill_id: 'content:ghost', version: '9.9.9', target_system_id: 'bot-x', context: 'x' });
+    expect(missing.applied).toBe(false);
+    expect(missing.reason).toBe('skill_not_found');
+    expect(missing.usage_id).toBeNull();
   });
 });

@@ -53,7 +53,8 @@ export const ApplySkillInput = z.object({
 export type ApplySkillInput = z.infer<typeof ApplySkillInput>;
 
 export const ApplySkillOutput = z.object({
-  usageId: z.string(),
+  /** null when the application was rejected (no record written). */
+  usageId: z.string().nullable(),
   applied: z.boolean(),
   reason: z.string().optional(),
 });
@@ -97,3 +98,15 @@ export const RevokeSkillOutput = z.object({
   skill: Skill,
 });
 export type RevokeSkillOutput = z.infer<typeof RevokeSkillOutput>;
+
+/** One recorded application of an approved skill version to a target system. */
+export const SkillUsageRecord = z.object({
+  id: z.string(),
+  skillId: z.string(),
+  version: z.string(),
+  targetSystemId: z.string(),
+  context: z.string(),
+  appliedBy: z.string(),
+  appliedAt: z.string().datetime(),
+});
+export type SkillUsageRecord = z.infer<typeof SkillUsageRecord>;

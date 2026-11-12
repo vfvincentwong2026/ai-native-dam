@@ -7,6 +7,7 @@ import {
   RegisterSkillInput,
   ApproveSkillInput,
   RevokeSkillInput,
+  ApplySkillInput,
   SearchAssetsInput,
   SearchKnowledgeInput,
   SearchSkillsInput,
@@ -19,6 +20,7 @@ import {
   type RightsRecord,
   type RiskLevel,
   type Skill,
+  type SkillUsageRecord,
   type UsageRecord,
 } from '@ai-native-dam/shared-schema';
 import { checkUse, searchAssets, type AssetWithRights } from '@ai-native-dam/governance';
@@ -461,6 +463,47 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         );
       }
       return { skill: revoked };
+    },
+  },
+  {
+    name: 'apply_skill',
+    description:
+      'Invoke an approved skill version against a target system; records usage against provenance. ' +
+      'Gated by approval. Only approved versions can be applied — pending/revoked versions are rejected ' +
+      'with applied=false. Does not modify the skill itself and does not approve new versions.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        skill_id: { type: 'string', description: 'Namespaced slug, e.g. drama:script-split' },
+        version: { type: 'string' },
+        target_system_id: { type: 'string', description: 'System the skill is applied to' },
+        context: { type: 'string', description: 'Why/how it is applied' },
+      },
+      required: ['skill_id', 'version', 'target_system_id', 'context'],
+    },
+    schema: ApplySkillInput,
+    handler: async (args: z.infer<typeof ApplySkillInput>, ctx: ToolContext) => {
+      const skill = await ctx.skillStore.get(args.skillId, args.version);
+      if (!skill) {
+        return { usageId: null, applied: false, reason: 'skill_not_found' };
+      }
+      if (skill.status !== 'approved') {
+        return { usageId: null, applied: false, reason: `skill_not_approved:${skill.status}` };
+      }
+      const record: SkillUsageRecord = {
+        id: `su-${randomUUID()}`,
+        skillId: skill.id,
+        version: skill.version,
+        targetSystemId: args.targetSystemId,
+        context: args.context,
+        appliedBy: ctx.principal.id,
+        appliedAt: new Date().toISOString(),
+      };
+      ctx.state.skillUsage.push(record);
+      return { usageId: record.id, applied: true };
     },
   },
 ];

@@ -154,7 +154,7 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
 | Tool | Risk | Gated | Status |
 |---|---|---|---|
 | `search_skills` | low | — | implemented (gateway, Phase 1) |
-| `apply_skill` | medium | ✅ | planned |
+| `apply_skill` | medium | ✅ | implemented (gateway, Phase 1) |
 | `register_skill` | medium | ✅ | implemented (gateway + `skill-sync`, Phase 1) |
 | `approve_skill` | high | ✅ | implemented (gateway, Phase 1) |
 | `revoke_skill` | high | ✅ | implemented (gateway, Phase 1) |
@@ -191,6 +191,7 @@ Implemented in `packages/mcp-gateway` over Streamable HTTP, in-memory state:
 | `register_skill` | ✅ implemented (gated, lands as `pending_approval`, commit-pinned provenance) |
 | `approve_skill` | ✅ implemented (high-risk gated, `draft`/`pending_approval` → `approved`; approver = authenticated principal) |
 | `revoke_skill` | ✅ implemented (high-risk gated, any status → `revoked`; record kept for audit) |
+| `apply_skill` | ✅ implemented (gated, approved-only; writes a `SkillUsageRecord` per application) |
 
 `packages/skill-sync` scans any skill repository (SKILL.md + frontmatter per
 `docs/skill-format.md`), validates manifests, derives git provenance, and

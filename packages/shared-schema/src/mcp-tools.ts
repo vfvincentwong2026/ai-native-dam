@@ -124,7 +124,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     name: 'apply_skill',
     description:
       'Invoke a skill version; records usage against provenance. Gated by approval. ' +
-      'Does not modify the skill itself and does not approve new versions — it only executes an approved version.',
+      'Does not modify the skill itself and does not approve new versions — it only executes an approved version. ' +
+      'Pending/revoked/missing versions return applied=false with a reason and write no usage record.',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
