@@ -115,6 +115,9 @@ importers:
 
   runtime/orchestrator:
     dependencies:
+      '@ai-native-dam/runtime-compilation':
+        specifier: workspace:*
+        version: link:../compilation
       '@ai-native-dam/shared-schema':
         specifier: workspace:*
         version: link:../../packages/shared-schema

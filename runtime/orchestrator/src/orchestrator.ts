@@ -13,6 +13,8 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import type { SystemSpec } from '@ai-native-dam/shared-schema';
+import { planBlueprint, type Blueprint } from '@ai-native-dam/runtime-compilation';
 import { ToolRejectedError, type McpClient } from './mcp-client.js';
 import { assertTransition, RunStore, type BuildRun, type PendingRegistration } from './run.js';
 
@@ -28,14 +30,35 @@ export interface RegistrationRequest extends PendingRegistration {
 }
 
 interface SpecsPage {
-  specs?: Array<{ id: string; title?: string; business_domain?: string }>;
+  specs?: Array<Record<string, unknown>>;
 }
 
 interface RegisterResult {
   system?: { id?: string };
 }
 
+/** The gateway speaks snake_case on the wire; map back to the domain type. */
+function wireToSpec(raw: Record<string, unknown>): SystemSpec {
+  return {
+    id: raw.id as string,
+    title: raw.title as string,
+    businessDomain: (raw.business_domain ?? raw.businessDomain) as string,
+    requirements: raw.requirements as string,
+    entities: (raw.entities ?? []) as SystemSpec['entities'],
+    workflows: (raw.workflows ?? []) as string[],
+    sourceSkillIds: (raw.source_skill_ids ?? raw.sourceSkillIds ?? []) as string[],
+    sourceKnowledgeIds: (raw.source_knowledge_ids ?? raw.sourceKnowledgeIds ?? []) as string[],
+    status: raw.status as SystemSpec['status'],
+    createdAt: (raw.created_at ?? raw.createdAt) as string,
+    approvedAt: (raw.approved_at ?? raw.approvedAt ?? null) as string | null,
+    approvedBy: (raw.approved_by ?? raw.approvedBy ?? null) as string | null,
+  };
+}
+
 export class Orchestrator {
+  /** Run-local blueprint registry: blueprint id → plan (ADR 0010 §2, not governed). */
+  private readonly blueprints = new Map<string, Blueprint>();
+
   constructor(
     private readonly client: McpClient,
     private readonly runs: RunStore = new RunStore(),
@@ -49,23 +72,51 @@ export class Orchestrator {
   async discoverWork(): Promise<SpecSummary[]> {
     const page = (await this.client.call('search_specs', { status: 'approved', limit: 50 })) as SpecsPage;
     return (page.specs ?? [])
-      .filter((s) => !this.runs.activeForSpec(s.id))
-      .map((s) => ({ id: s.id, title: s.title ?? '', businessDomain: s.business_domain ?? '' }));
+      .filter((s) => !this.runs.activeForSpec(s.id as string))
+      .map((s) => ({
+        id: s.id as string,
+        title: (s.title as string) ?? '',
+        businessDomain: (s.business_domain as string) ?? '',
+      }));
   }
 
-  /** Open a run for a spec and enter `compiling`. Compilation itself plugs in here later. */
+  /** The Blueprint planned for a run (undefined until startRun completes). */
+  getBlueprint(runId: string): Blueprint | undefined {
+    const ref = this.runs.get(runId)?.blueprintRef;
+    return ref ? this.blueprints.get(ref) : undefined;
+  }
+
+  private async fetchSpec(specId: string): Promise<SystemSpec> {
+    const page = (await this.client.call('search_specs', { limit: 50 })) as SpecsPage;
+    const raw = (page.specs ?? []).find((s) => s.id === specId);
+    if (!raw) throw new Error(`spec ${specId} not found on the governance plane`);
+    return wireToSpec(raw);
+  }
+
+  /**
+   * Open a run for an approved spec: fetch it from the governance plane,
+   * plan the deterministic Blueprint (compilation package), and enter
+   * `compiling`. Only approved specs compile (ADR 0007/0010) — the gateway
+   * remains the source of truth and re-checks at registration.
+   */
   async startRun(specId: string): Promise<BuildRun> {
     const active = this.runs.activeForSpec(specId);
     if (active) {
       throw new Error(`spec ${specId} already has an active run (${active.id}, ${active.state})`);
     }
+    const spec = await this.fetchSpec(specId);
+    if (spec.status !== 'approved') {
+      throw new Error(`spec ${specId} has status ${spec.status}; only approved specs enter the Builder Runtime`);
+    }
+    const blueprint = planBlueprint(spec);
+    this.blueprints.set(blueprint.id, blueprint);
     const run = this.runs.create(`run-${randomUUID()}`, specId);
-    return this.runs.advance(run.id, 'compiling');
+    return this.runs.advance(run.id, 'compiling', { blueprintRef: blueprint.id });
   }
 
-  /** Compilation finished: record the Blueprint pointer and enter `verifying`. */
-  completeCompilation(runId: string, blueprintRef: string): BuildRun {
-    return this.runs.advance(runId, 'verifying', { blueprintRef });
+  /** Compilation finished: record the generated-code pointer and enter `verifying`. */
+  completeCompilation(runId: string, buildRef: string): BuildRun {
+    return this.runs.advance(runId, 'verifying', { buildRef });
   }
 
   /**

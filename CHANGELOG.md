@@ -8,6 +8,13 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Orchestrator ↔ compilation wiring (ADR 0010): `startRun` now fetches the
+  spec from the governance plane, enforces approved-only entry, and plans the
+  deterministic Blueprint immediately (`BuildRun.blueprintRef` +
+  `getBlueprint`); `completeCompilation` records the generated-code pointer
+  (`buildRef`). Wire-format (snake_case) specs are mapped back to the domain
+  type at the client boundary.
+
 - `runtime/compilation` deterministic Spec → Blueprint planner (ADR 0010 §1):
   pure function of the spec (no LLM / clock / randomness) producing stack
   choice (domain-keyword overrides), module breakdown (core/entity/workflow),

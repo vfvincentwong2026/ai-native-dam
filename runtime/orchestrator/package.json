@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-native-dam/runtime-compilation": "workspace:*",
     "@ai-native-dam/shared-schema": "workspace:*"
   },
   "devDependencies": {

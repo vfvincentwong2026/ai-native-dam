@@ -47,7 +47,22 @@ function fakeGateway(handler: Handler): HandlerWithCalls {
   return { calls, fetchImpl };
 }
 
-const SPEC = { id: 'spec-1', title: 'Order Admin', business_domain: 'retail' };
+const SPEC = {
+  id: 'spec-1',
+  title: 'Order Admin',
+  business_domain: 'retail',
+  requirements: 'Ops need an order admin console.',
+  entities: [
+    { name: 'order', fields: [{ name: 'id', type: 'string', required: true }], permissions: ['read'] },
+  ],
+  workflows: ['fulfill order'],
+  source_skill_ids: ['operations:project-context'],
+  source_knowledge_ids: [],
+  status: 'approved',
+  created_at: '2026-01-01T00:00:00.000Z',
+  approved_at: '2026-01-01T01:00:00.000Z',
+  approved_by: 'editor',
+};
 
 function happyPathHandler(calls: RecordedCall[]): Handler {
   return (call) => {
@@ -138,13 +153,20 @@ describe('Orchestrator', () => {
 
     const run = await orch.startRun('spec-1');
     expect(run.state).toBe('compiling');
+    // startRun plans the deterministic Blueprint immediately
+    expect(run.blueprintRef).toMatch(/^bp-[a-f0-9]{12}$/);
+    const bp = orch.getBlueprint(run.id);
+    expect(bp?.specId).toBe('spec-1');
+    expect(bp?.stack.storage).toBe('postgres'); // retail domain override
+    expect(bp?.files.map((f) => f.path)).toContain('dam.manifest.yaml');
 
     // an active run removes the spec from discovery and blocks duplicate runs
     expect(await orch.discoverWork()).toEqual([]);
     await expect(orch.startRun('spec-1')).rejects.toThrow(/already has an active run/);
 
-    orch.completeCompilation(run.id, 'blueprint://run-local/spec-1#plan');
+    orch.completeCompilation(run.id, 'build://run-local/spec-1#tree');
     expect(orch.runStore.get(run.id)?.state).toBe('verifying');
+    expect(orch.runStore.get(run.id)?.buildRef).toBe('build://run-local/spec-1#tree');
 
     const awaiting = await orch.requestRegistration(run.id, {
       name: 'Order Admin',
@@ -180,6 +202,22 @@ describe('Orchestrator', () => {
     expect(gw.calls.filter((c) => c.name === 'register_generated_system')).toHaveLength(0);
   });
 
+  it('rejects specs that are missing or not approved before planning anything', async () => {
+    const gw = fakeGateway((call) => {
+      if (call.name === 'search_specs') {
+        return { specs: [{ ...SPEC, status: 'draft' }] };
+      }
+      throw new Error(`unexpected tool ${call.name}`);
+    });
+    const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
+    const orch = new Orchestrator(client);
+
+    await expect(orch.startRun('spec-1')).rejects.toThrow(/only approved specs/);
+    await expect(orch.startRun('spec-ghost')).rejects.toThrow(/not found/);
+    // no run was created for either attempt
+    expect(orch.runStore.list()).toHaveLength(0);
+  });
+
   it('a rejected confirmation closes the run as failed with the reason', async () => {
     const gw = fakeGateway((call) => {
       if (call.name === 'register_generated_system') {
@@ -188,7 +226,7 @@ describe('Orchestrator', () => {
         }
         return { __isError: true, rejected: true, reason: 'invalid_status_transition' };
       }
-      return { specs: [] };
+      return { specs: [SPEC] };
     });
     const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
     const orch = new Orchestrator(client);

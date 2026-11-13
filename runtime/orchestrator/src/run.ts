@@ -26,6 +26,8 @@ export interface BuildRun {
   readonly state: RunState;
   /** Run-local pointer (path or hash) to the Blueprint produced by compilation. */
   readonly blueprintRef: string | null;
+  /** Run-local pointer to the generated code tree (set when compilation finishes). */
+  readonly buildRef: string | null;
   /** Run-local pointer to the verify-before-register report. */
   readonly verifyReportRef: string | null;
   /** Confirmation token held while awaiting the human register decision. */
@@ -84,6 +86,7 @@ export class RunStore {
       specId,
       state: 'queued',
       blueprintRef: null,
+      buildRef: null,
       verifyReportRef: null,
       pendingConfirmation: null,
       pendingRegistration: null,
