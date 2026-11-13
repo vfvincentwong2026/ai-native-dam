@@ -47,6 +47,8 @@ import {
   SearchDistillationsOutput,
   RegisterLoraAdapterInput,
   RegisterLoraAdapterOutput,
+  SearchLorasInput,
+  SearchLorasOutput,
 } from './distillation.js';
 import { RiskLevel } from './approval.js';
 
@@ -290,6 +292,18 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     scopes: ['Edit'],
     input: RegisterLoraAdapterInput,
     output: RegisterLoraAdapterOutput,
+  },
+  {
+    name: 'search_loras',
+    description:
+      'List registered LoRA adapter artifacts, optionally filtered by source skill. ' +
+      'Read-only; returns metadata pointers (adapter/training-data URIs, base model, metrics), ' +
+      'never the adapter bytes.',
+    riskLevel: 'low',
+    gated: false,
+    scopes: ['Suggest', 'Read', 'Edit'],
+    input: SearchLorasInput,
+    output: SearchLorasOutput,
   },
 ];
 

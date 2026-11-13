@@ -21,6 +21,7 @@ import {
   ApproveDistillationInput,
   SearchDistillationsInput,
   RegisterLoraAdapterInput,
+  SearchLorasInput,
   type Asset,
   type DistillationRequest,
   type KnowledgeEntry,
@@ -848,6 +849,28 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       };
       await ctx.store.putLora(artifact);
       return { artifact };
+    },
+  },
+  {
+    name: 'search_loras',
+    description:
+      'List registered LoRA adapter artifacts, optionally filtered by source skill. ' +
+      'Read-only; returns metadata pointers (adapter/training-data URIs, base model, metrics), ' +
+      'never the adapter bytes.',
+    riskLevel: 'low',
+    gated: false,
+    scopes: ['Suggest', 'Read', 'Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source_skill_id: { type: 'string' },
+        limit: { type: 'integer', default: 20, maximum: 50 },
+      },
+    },
+    schema: SearchLorasInput,
+    handler: async (args: z.infer<typeof SearchLorasInput>, ctx: ToolContext) => {
+      const artifacts = await ctx.store.listLoras(args.sourceSkillId);
+      return { artifacts: artifacts.slice(0, args.limit) };
     },
   },
 ];

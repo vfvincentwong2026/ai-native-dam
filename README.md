@@ -317,6 +317,7 @@ The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each
 | `approve_distillation` | high | ✅ | Human decision on a paused request: release to the execution plane or reject |
 | `search_distillations` | low | — | List distillation requests by status and source skill |
 | `register_lora_adapter` | high | ✅ | Register a distilled adapter as a versioned asset |
+| `search_loras` | low | — | List registered LoRA adapters (metadata pointers, never the bytes) |
 
 **Approval semantics.** `mcp-approval` asks a human via `elicitation` whenever the client supports it; when it cannot, it falls back to a **two-call confirmation token** — the first call returns a random string, the second must quote it back. The token proves the call was made twice with the same arguments; `elicitation` is what actually closes the loop, because the model cannot answer on the person's behalf[reference:6].
 

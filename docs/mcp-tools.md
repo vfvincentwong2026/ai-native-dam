@@ -173,6 +173,7 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
 | `approve_distillation` | high | ✅ | implemented (gateway, Phase 4) |
 | `search_distillations` | low | — | implemented (gateway, Phase 4) |
 | `register_lora_adapter` | high | ✅ | implemented (gateway, Phase 4) |
+| `search_loras` | low | — | implemented (gateway, Phase 4) |
 
 ---
 

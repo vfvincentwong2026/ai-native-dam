@@ -609,4 +609,17 @@ describe('distillation decision gate', () => {
     expect(bad.rejected).toBe(true);
     expect(bad.reason).toBe('skill_not_approved');
   });
+
+  it('search_loras lists registered artifacts and filters by source skill', async () => {
+    const all = await dCall('search_loras', {});
+    expect(all.artifacts).toHaveLength(1);
+    expect(all.artifacts[0].source_skill_id).toBe('content:distill-hot');
+    expect(all.artifacts[0].base_model).toBe('qwen2.5-7b');
+
+    const bySkill = await dCall('search_loras', { source_skill_id: 'content:distill-hot' });
+    expect(bySkill.artifacts).toHaveLength(1);
+
+    const none = await dCall('search_loras', { source_skill_id: 'content:distill-cold' });
+    expect(none.artifacts).toHaveLength(0);
+  });
 });

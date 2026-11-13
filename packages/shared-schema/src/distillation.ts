@@ -58,6 +58,12 @@ export const SearchDistillationsOutput = z.object({
 });
 export type SearchDistillationsOutput = z.infer<typeof SearchDistillationsOutput>;
 
+export const SearchLorasInput = z.object({
+  sourceSkillId: z.string().optional(),
+  limit: z.number().int().min(1).max(50).default(20),
+});
+export type SearchLorasInput = z.infer<typeof SearchLorasInput>;
+
 export const RegisterLoraAdapterInput = z.object({
   sourceSkillId: z.string(),
   version: z.string(),
@@ -80,6 +86,11 @@ export const LoraArtifact = z.object({
   createdAt: z.string().datetime(),
 });
 export type LoraArtifact = z.infer<typeof LoraArtifact>;
+
+export const SearchLorasOutput = z.object({
+  artifacts: z.array(LoraArtifact),
+});
+export type SearchLorasOutput = z.infer<typeof SearchLorasOutput>;
 
 export const RegisterLoraAdapterOutput = z.object({
   artifact: LoraArtifact,
