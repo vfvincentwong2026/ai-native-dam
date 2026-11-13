@@ -8,6 +8,13 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `runtime/compilation` deterministic Spec → Blueprint planner (ADR 0010 §1):
+  pure function of the spec (no LLM / clock / randomness) producing stack
+  choice (domain-keyword overrides), module breakdown (core/entity/workflow),
+  file manifest with InstallableUnit L1 core files, and a C0–C3 prompt plan.
+  Blueprint identity is a sha256 over canonical content; slug collisions
+  (e.g. CJK workflow names) are disambiguated deterministically.
+
 - `runtime/orchestrator` Builder Runtime skeleton (ADR 0010): whitelisted MCP
   client (`HttpMcpClient`, ADR 0010 §5 tool surface, two-call gated flow with
   explicit `beginGated`/`confirmGated` seam), run state machine
