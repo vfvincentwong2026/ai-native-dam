@@ -1,6 +1,8 @@
 import type {
   Asset,
+  DistillationRequest,
   KnowledgeEntry,
+  LoraArtifact,
   RightsRecord,
   Skill,
   SkillUsageRecord,
@@ -28,6 +30,10 @@ export interface GatewayState {
   skillUsage: SkillUsageRecord[];
   /** system spec id → spec (drafts through approved) */
   specs: Map<string, SystemSpec>;
+  /** distillation request id → request (queued → awaiting_approval → …) */
+  distillations: Map<string, DistillationRequest>;
+  /** LoRA artifact id → registered adapter metadata */
+  loras: Map<string, LoraArtifact>;
 }
 
 export interface StateSeed {
@@ -38,6 +44,8 @@ export interface StateSeed {
   skills?: Skill[];
   skillUsage?: SkillUsageRecord[];
   specs?: SystemSpec[];
+  distillations?: DistillationRequest[];
+  loras?: LoraArtifact[];
 }
 
 export function createState(seed: StateSeed = {}): GatewayState {
@@ -49,6 +57,8 @@ export function createState(seed: StateSeed = {}): GatewayState {
     skills: new Map(),
     skillUsage: [],
     specs: new Map(),
+    distillations: new Map(),
+    loras: new Map(),
   };
   for (const asset of seed.assets ?? []) state.assets.set(asset.id, asset);
   for (const rights of seed.rights ?? []) state.rights.set(rights.assetId, rights);
@@ -57,5 +67,7 @@ export function createState(seed: StateSeed = {}): GatewayState {
   for (const skill of seed.skills ?? []) state.skills.set(`${skill.id}@${skill.version}`, skill);
   state.skillUsage.push(...(seed.skillUsage ?? []));
   for (const spec of seed.specs ?? []) state.specs.set(spec.id, spec);
+  for (const d of seed.distillations ?? []) state.distillations.set(d.id, d);
+  for (const l of seed.loras ?? []) state.loras.set(l.id, l);
   return state;
 }

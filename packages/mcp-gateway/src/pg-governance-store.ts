@@ -1,6 +1,9 @@
 import type {
   Asset,
+  DistillationRequest,
+  DistillationStatus,
   KnowledgeEntry,
+  LoraArtifact,
   RightsRecord,
   SkillUsageRecord,
   SystemSpec,
@@ -76,6 +79,29 @@ CREATE TABLE IF NOT EXISTS system_specs (
   created_at           timestamptz NOT NULL,
   approved_at          timestamptz,
   approved_by          text
+);
+CREATE TABLE IF NOT EXISTS distillation_requests (
+  id              text PRIMARY KEY,
+  source_skill_id text NOT NULL,
+  usage_count     integer NOT NULL DEFAULT 0,
+  threshold       integer NOT NULL DEFAULT 20,
+  status          text NOT NULL CHECK (status IN ('queued','awaiting_approval','training','completed','failed','rejected')),
+  reason          text,
+  requested_by    text NOT NULL,
+  requested_at    timestamptz NOT NULL,
+  approved_at     timestamptz,
+  approved_by     text
+);
+CREATE TABLE IF NOT EXISTS lora_artifacts (
+  id                text PRIMARY KEY,
+  source_skill_id   text NOT NULL,
+  version           text NOT NULL,
+  adapter_uri       text NOT NULL,
+  training_data_uri text NOT NULL,
+  base_model        text NOT NULL,
+  metrics           jsonb NOT NULL DEFAULT '{}',
+  registered_by     text NOT NULL,
+  created_at        timestamptz NOT NULL
 )`;
 
 /** pg and PGlite both return Date for timestamptz; normalize to ISO strings. */
@@ -161,6 +187,35 @@ function rowToSpec(r: any): SystemSpec {
     createdAt: iso(r.created_at) as string,
     approvedAt: iso(r.approved_at),
     approvedBy: r.approved_by ?? null,
+  };
+}
+
+function rowToDistillation(r: any): DistillationRequest {
+  return {
+    id: r.id,
+    sourceSkillId: r.source_skill_id,
+    usageCount: r.usage_count,
+    threshold: r.threshold,
+    status: r.status,
+    reason: r.reason ?? null,
+    requestedBy: r.requested_by,
+    requestedAt: iso(r.requested_at) as string,
+    approvedAt: iso(r.approved_at),
+    approvedBy: r.approved_by ?? null,
+  };
+}
+
+function rowToLora(r: any): LoraArtifact {
+  return {
+    id: r.id,
+    sourceSkillId: r.source_skill_id,
+    version: r.version,
+    adapterUri: r.adapter_uri,
+    trainingDataUri: r.training_data_uri,
+    baseModel: r.base_model,
+    metrics: r.metrics ?? {},
+    registeredBy: r.registered_by,
+    createdAt: iso(r.created_at) as string,
   };
 }
 
@@ -334,5 +389,49 @@ export class PgGovernanceStore implements GovernanceStore {
       ? await this.db.query('SELECT * FROM system_specs WHERE status = $1 ORDER BY created_at, id', [status])
       : await this.db.query('SELECT * FROM system_specs ORDER BY created_at, id');
     return rows.map(rowToSpec);
+  }
+
+  async getDistillation(id: string): Promise<DistillationRequest | undefined> {
+    const { rows } = await this.db.query('SELECT * FROM distillation_requests WHERE id = $1', [id]);
+    return rows[0] ? rowToDistillation(rows[0]) : undefined;
+  }
+
+  async putDistillation(request: DistillationRequest): Promise<void> {
+    await this.db.query(
+      `INSERT INTO distillation_requests (id, source_skill_id, usage_count, threshold, status,
+                                          reason, requested_by, requested_at, approved_at, approved_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       ON CONFLICT (id) DO UPDATE SET
+         usage_count = EXCLUDED.usage_count, status = EXCLUDED.status, reason = EXCLUDED.reason,
+         approved_at = EXCLUDED.approved_at, approved_by = EXCLUDED.approved_by`,
+      [request.id, request.sourceSkillId, request.usageCount, request.threshold, request.status,
+       request.reason, request.requestedBy, request.requestedAt, request.approvedAt, request.approvedBy],
+    );
+  }
+
+  async listDistillations(status?: DistillationStatus): Promise<DistillationRequest[]> {
+    const { rows } = status
+      ? await this.db.query('SELECT * FROM distillation_requests WHERE status = $1 ORDER BY requested_at, id', [status])
+      : await this.db.query('SELECT * FROM distillation_requests ORDER BY requested_at, id');
+    return rows.map(rowToDistillation);
+  }
+
+  async putLora(artifact: LoraArtifact): Promise<void> {
+    await this.db.query(
+      `INSERT INTO lora_artifacts (id, source_skill_id, version, adapter_uri, training_data_uri,
+                                   base_model, metrics, registered_by, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT (id) DO UPDATE SET
+         metrics = EXCLUDED.metrics`,
+      [artifact.id, artifact.sourceSkillId, artifact.version, artifact.adapterUri, artifact.trainingDataUri,
+       artifact.baseModel, JSON.stringify(artifact.metrics), artifact.registeredBy, artifact.createdAt],
+    );
+  }
+
+  async listLoras(sourceSkillId?: string): Promise<LoraArtifact[]> {
+    const { rows } = sourceSkillId
+      ? await this.db.query('SELECT * FROM lora_artifacts WHERE source_skill_id = $1 ORDER BY created_at, id', [sourceSkillId])
+      : await this.db.query('SELECT * FROM lora_artifacts ORDER BY created_at, id');
+    return rows.map(rowToLora);
   }
 }

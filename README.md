@@ -314,6 +314,8 @@ The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each
 | Tool | Risk | Gated | Description |
 |---|---|---|---|
 | `request_distillation` | medium | ✅ | Flag a skill/twin after N uses; **pauses before training** |
+| `approve_distillation` | high | ✅ | Human decision on a paused request: release to the execution plane or reject |
+| `search_distillations` | low | — | List distillation requests by status and source skill |
 | `register_lora_adapter` | high | ✅ | Register a distilled adapter as a versioned asset |
 
 **Approval semantics.** `mcp-approval` asks a human via `elicitation` whenever the client supports it; when it cannot, it falls back to a **two-call confirmation token** — the first call returns a random string, the second must quote it back. The token proves the call was made twice with the same arguments; `elicitation` is what actually closes the loop, because the model cannot answer on the person's behalf[reference:6].
@@ -389,7 +391,7 @@ When the MCP gateway is ready, you can expose a **read-only** MCP endpoint direc
 | **1 · Skills & Knowledge** | Capability registry | `search_skills`, `apply_skill`, layered knowledge base, write-gated |
 | **2 · Spec-first Generation** | Builder Runtime | Orchestration, `generate_system_spec`, approval gate, **one SOP → one approved Spec** |
 | **3 · A2A Collaboration** *(planned)* | Peer agents | Agent Card live, customer agents can delegate generation |
-| **4 · Distillation** *(planned)* | Capability compounding | `request_distillation`, pause-before-train, LoRA adapter registry |
+| **4 · Distillation** *(in progress)* | Capability compounding | `request_distillation` + `approve_distillation` decision gate live, `search_distillations`, LoRA adapter metadata registry; execution-plane training pending |
 | **5 · Meta-generation** *(planned)* | Systems that generate systems | Spec templates for “generate a DAM” as a first-class output |
 
 Status: **Phase 0.** See [open issues](https://github.com/vfvincentwong2026/ai-native-dam/issues).

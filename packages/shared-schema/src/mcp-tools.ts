@@ -41,6 +41,10 @@ import {
 import {
   RequestDistillationInput,
   RequestDistillationOutput,
+  ApproveDistillationInput,
+  ApproveDistillationOutput,
+  SearchDistillationsInput,
+  SearchDistillationsOutput,
   RegisterLoraAdapterInput,
   RegisterLoraAdapterOutput,
 } from './distillation.js';
@@ -244,12 +248,37 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     name: 'request_distillation',
     description:
       'Flag a skill for distillation after N uses. Gated by approval. ' +
-      'Pauses before training — never starts training by itself; training requires a separate human decision (see docs/adr/0003).',
+      'Pauses before training — never starts training by itself; crossing the usage threshold only ' +
+      'sets awaiting_approval, and a human releases it via approve_distillation (see docs/adr/0003).',
     riskLevel: 'medium',
     gated: true,
     scopes: ['Edit'],
     input: RequestDistillationInput,
     output: RequestDistillationOutput,
+  },
+  {
+    name: 'approve_distillation',
+    description:
+      'Human decision on an awaiting_approval distillation request: approve releases it to the ' +
+      'execution plane (status training), reject closes it. High risk, always gated. The decider ' +
+      'identity comes from the authenticated principal. Does not itself run training, and cannot ' +
+      'decide a request that is not awaiting_approval.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    input: ApproveDistillationInput,
+    output: ApproveDistillationOutput,
+  },
+  {
+    name: 'search_distillations',
+    description:
+      'Query distillation requests by status or source skill. Read-only; ' +
+      'queued and awaiting_approval requests are visible so reviewers can find pending decisions.',
+    riskLevel: 'low',
+    gated: false,
+    scopes: ['Suggest', 'Read', 'Edit'],
+    input: SearchDistillationsInput,
+    output: SearchDistillationsOutput,
   },
   {
     name: 'register_lora_adapter',

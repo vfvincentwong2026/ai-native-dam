@@ -483,3 +483,130 @@ describe('search_specs', () => {
     expect(miss.specs).toHaveLength(0);
   });
 });
+
+describe('distillation decision gate', () => {
+  let distBase: string;
+  let distServer: ReturnType<typeof createGateway>['server'];
+
+  const mkSkill = (id: string) => ({
+    id, version: '1.0.0', name: id, description: `Approved skill ${id} for distillation tests.`,
+    domain: 'content' as const, sourceSopId: null, status: 'approved' as const,
+    approvedAt: '2026-01-01T00:00:00.000Z', approvedBy: 'editor', loraArtifactRef: null,
+    createdAt: '2026-01-01T00:00:00.000Z', sourceRepo: null, sourcePath: null, sourceCommit: null,
+  });
+  const mkUsage = (skillId: string, i: number) => ({
+    id: `su-${skillId}-${i}`, skillId, version: '1.0.0', targetSystemId: 'bot-x',
+    context: 'seed', appliedBy: 'editor', appliedAt: '2026-01-01T00:00:00.000Z',
+  });
+
+  async function dCall(name: string, args: Record<string, unknown>) {
+    const post = (a: Record<string, unknown>) => fetch(`${distBase}/mcp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer edit-token' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: a } }),
+    }).then(r => r.json() as Promise<any>);
+    const first = await post(args);
+    const text = first?.result?.content?.[0]?.text;
+    if (!text) return { rpcError: first?.error };
+    const payload = JSON.parse(text);
+    if (!payload.approval_required) return payload;
+    const second = await post({ ...args, _confirmation: payload.confirmation_token });
+    return JSON.parse(second?.result?.content?.[0]?.text ?? '{}');
+  }
+
+  beforeAll(async () => {
+    const gw = createGateway({
+      tokens: TOKENS,
+      distillationThreshold: 3,
+      seed: {
+        skills: [mkSkill('content:distill-cold'), mkSkill('content:distill-hot'), mkSkill('content:distill-rej')],
+        skillUsage: [1, 2].map(i => mkUsage('content:distill-cold', i))
+          .concat([1, 2, 3].map(i => mkUsage('content:distill-hot', i)))
+          .concat([1, 2, 3, 4].map(i => mkUsage('content:distill-rej', i))),
+      },
+    });
+    distServer = gw.server;
+    await new Promise<void>(r => distServer.listen(0, '127.0.0.1', r));
+    distBase = `http://127.0.0.1:${(distServer.address() as AddressInfo).port}`;
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => distServer.close(err => (err ? reject(err) : resolve())));
+  });
+
+  it('below threshold lands queued; duplicate active request rejected; queued cannot be decided', async () => {
+    const r = await dCall('request_distillation', { source_skill_id: 'content:distill-cold', reason: 'repetitive usage' });
+    expect(r.request.status).toBe('queued'); // 2 uses < threshold 3
+    expect(r.request.usage_count).toBe(2);
+    expect(r.request.threshold).toBe(3);
+    expect(r.request.requested_by).toBe('editor');
+
+    const dupe = await dCall('request_distillation', { source_skill_id: 'content:distill-cold' });
+    expect(dupe.rejected).toBe(true);
+    expect(dupe.reason).toBe('distillation_already_active');
+
+    const early = await dCall('approve_distillation', { request_id: r.request.id, decision: 'approve' });
+    expect(early.rejected).toBe(true);
+    expect(early.reason).toBe('invalid_status_transition');
+  });
+
+  it('unregistered or unapproved skills cannot be flagged', async () => {
+    const missing = await dCall('request_distillation', { source_skill_id: 'content:ghost' });
+    expect(missing.rejected).toBe(true);
+    expect(missing.reason).toBe('skill_not_found');
+  });
+
+  it('at threshold lands awaiting_approval; approve releases to training with decider stamped', async () => {
+    const r = await dCall('request_distillation', { source_skill_id: 'content:distill-hot' });
+    expect(r.request.status).toBe('awaiting_approval'); // 3 uses >= 3
+    expect(r.request.usage_count).toBe(3);
+
+    const decided = await dCall('approve_distillation', { request_id: r.request.id, decision: 'approve' });
+    expect(decided.request.status).toBe('training');
+    expect(decided.request.approved_by).toBe('editor');
+    expect(decided.request.approved_at).toBeTruthy();
+
+    const again = await dCall('approve_distillation', { request_id: r.request.id, decision: 'reject' });
+    expect(again.rejected).toBe(true);
+    expect(again.reason).toBe('invalid_status_transition');
+  });
+
+  it('reject closes an awaiting_approval request', async () => {
+    const r = await dCall('request_distillation', { source_skill_id: 'content:distill-rej' });
+    expect(r.request.status).toBe('awaiting_approval');
+    const decided = await dCall('approve_distillation', { request_id: r.request.id, decision: 'reject' });
+    expect(decided.request.status).toBe('rejected');
+    expect(decided.request.approved_by).toBe('editor');
+  });
+
+  it('search_distillations filters by status and skill; read scope allowed', async () => {
+    const training = await dCall('search_distillations', { status: 'training' });
+    expect(training.requests).toHaveLength(1);
+    expect(training.requests[0].source_skill_id).toBe('content:distill-hot');
+
+    const bySkill = await dCall('search_distillations', { source_skill_id: 'content:distill-cold' });
+    expect(bySkill.requests).toHaveLength(1);
+    expect(bySkill.requests[0].status).toBe('queued');
+  });
+
+  it('register_lora_adapter links to an approved skill and stamps the registrar', async () => {
+    const ok = await dCall('register_lora_adapter', {
+      source_skill_id: 'content:distill-hot', version: '1.0.0',
+      adapter_uri: 'https://artifacts.example.com/lora/distill-hot-1.0.0.safetensors',
+      training_data_uri: 'https://artifacts.example.com/data/distill-hot-1.0.0.parquet',
+      base_model: 'qwen2.5-7b', metrics: { eval_loss: 0.42 },
+    });
+    expect(ok.artifact.id).toMatch(/^lora-/);
+    expect(ok.artifact.registered_by).toBe('editor');
+    expect(ok.artifact.metrics.eval_loss).toBe(0.42);
+
+    const bad = await dCall('register_lora_adapter', {
+      source_skill_id: 'content:ghost', version: '1.0.0',
+      adapter_uri: 'https://artifacts.example.com/x.safetensors',
+      training_data_uri: 'https://artifacts.example.com/x.parquet',
+      base_model: 'qwen2.5-7b',
+    });
+    expect(bad.rejected).toBe(true);
+    expect(bad.reason).toBe('skill_not_approved');
+  });
+});

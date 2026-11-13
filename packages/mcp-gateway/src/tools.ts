@@ -17,8 +17,14 @@ import {
   GenerateSystemSpecInput,
   SubmitSystemSpecInput,
   SearchSpecsInput,
+  RequestDistillationInput,
+  ApproveDistillationInput,
+  SearchDistillationsInput,
+  RegisterLoraAdapterInput,
   type Asset,
+  type DistillationRequest,
   type KnowledgeEntry,
+  type LoraArtifact,
   type McpScope,
   type RightsRecord,
   type RiskLevel,
@@ -52,6 +58,8 @@ export interface ToolContext {
   /** Skill Registry persistence — memory, embedded PGlite, or Postgres pool. */
   skillStore: SkillStore;
   principal: Principal;
+  /** Usage count at which a distillation request flips to awaiting_approval (ADR 0003). */
+  distillationThreshold: number;
 }
 
 export interface GatewayTool {
@@ -676,6 +684,170 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         specs = specs.filter(s => `${s.title} ${s.businessDomain}`.toLowerCase().includes(q));
       }
       return { specs: specs.slice(0, args.limit) };
+    },
+  },
+  {
+    name: 'request_distillation',
+    description:
+      'Flag an approved skill for distillation. Gated by approval. Records current usage count; ' +
+      'at or above the threshold the request lands as awaiting_approval, below it stays queued. ' +
+      'Pauses before training — never starts training; a human releases it via approve_distillation.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source_skill_id: { type: 'string', description: 'Approved skill id, e.g. drama:script-split' },
+        reason: { type: 'string', description: 'Why this skill should be distilled' },
+      },
+      required: ['source_skill_id'],
+    },
+    schema: RequestDistillationInput,
+    handler: async (args: z.infer<typeof RequestDistillationInput>, ctx: ToolContext) => {
+      const all = await ctx.skillStore.search({ onlyApproved: false });
+      const versions = all.filter(s => s.id === args.sourceSkillId);
+      if (versions.length === 0) {
+        throw new ToolRejection('skill_not_found', `Skill ${args.sourceSkillId} is not registered`);
+      }
+      if (!versions.some(s => s.status === 'approved')) {
+        throw new ToolRejection(
+          'skill_not_approved',
+          `Skill ${args.sourceSkillId} has no approved version; only approved skills can be distilled`,
+        );
+      }
+      const active = (await ctx.store.listDistillations())
+        .filter(d => d.sourceSkillId === args.sourceSkillId
+          && (d.status === 'queued' || d.status === 'awaiting_approval' || d.status === 'training'));
+      if (active.length > 0) {
+        throw new ToolRejection(
+          'distillation_already_active',
+          `Skill ${args.sourceSkillId} already has an active distillation request (${active[0].id}, ${active[0].status})`,
+        );
+      }
+      const usageCount = (await ctx.store.listSkillUsage(args.sourceSkillId)).length;
+      const threshold = ctx.distillationThreshold;
+      const request: DistillationRequest = {
+        id: `dist-${randomUUID()}`,
+        sourceSkillId: args.sourceSkillId,
+        usageCount,
+        threshold,
+        status: usageCount >= threshold ? 'awaiting_approval' : 'queued',
+        reason: args.reason ?? null,
+        requestedBy: ctx.principal.id,
+        requestedAt: new Date().toISOString(),
+        approvedAt: null,
+        approvedBy: null,
+      };
+      await ctx.store.putDistillation(request);
+      return { request };
+    },
+  },
+  {
+    name: 'approve_distillation',
+    description:
+      'Human decision on an awaiting_approval distillation request: approve releases it to the ' +
+      'execution plane (status training), reject closes it (status rejected). High risk, always ' +
+      'gated; decider identity from the authenticated principal. Does not run training itself.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request_id: { type: 'string', minLength: 1 },
+        decision: { type: 'string', enum: ['approve', 'reject'] },
+      },
+      required: ['request_id', 'decision'],
+    },
+    schema: ApproveDistillationInput,
+    handler: async (args: z.infer<typeof ApproveDistillationInput>, ctx: ToolContext) => {
+      const request = await ctx.store.getDistillation(args.requestId);
+      if (!request) {
+        throw new ToolRejection('distillation_not_found', `Distillation request ${args.requestId} does not exist`);
+      }
+      if (request.status !== 'awaiting_approval') {
+        throw new ToolRejection(
+          'invalid_status_transition',
+          `Distillation request ${args.requestId} has status ${request.status}; only awaiting_approval can be decided`,
+        );
+      }
+      const decided: DistillationRequest = {
+        ...request,
+        status: args.decision === 'approve' ? 'training' : 'rejected',
+        approvedAt: new Date().toISOString(),
+        approvedBy: ctx.principal.id,
+      };
+      await ctx.store.putDistillation(decided);
+      return { request: decided };
+    },
+  },
+  {
+    name: 'search_distillations',
+    description:
+      'Query distillation requests by status or source skill. Read-only; queued and ' +
+      'awaiting_approval requests are visible so reviewers can find pending decisions.',
+    riskLevel: 'low',
+    gated: false,
+    scopes: ['Suggest', 'Read', 'Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['queued', 'awaiting_approval', 'training', 'completed', 'failed', 'rejected'] },
+        source_skill_id: { type: 'string' },
+        limit: { type: 'integer', default: 20, maximum: 50 },
+      },
+    },
+    schema: SearchDistillationsInput,
+    handler: async (args: z.infer<typeof SearchDistillationsInput>, ctx: ToolContext) => {
+      let requests = await ctx.store.listDistillations(args.status);
+      if (args.sourceSkillId) requests = requests.filter(r => r.sourceSkillId === args.sourceSkillId);
+      return { requests: requests.slice(0, args.limit) };
+    },
+  },
+  {
+    name: 'register_lora_adapter',
+    description:
+      'Register a distilled LoRA adapter as a versioned artifact, linked to an approved source skill. ' +
+      'High risk, always gated, never auto-approved. Metadata only — does not deploy, load, or serve ' +
+      'the adapter, and does not close the distillation request.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source_skill_id: { type: 'string' },
+        version: { type: 'string', description: 'Adapter version, e.g. 1.0.0' },
+        adapter_uri: { type: 'string', format: 'uri', description: 'Where the adapter weights live' },
+        training_data_uri: { type: 'string', format: 'uri', description: 'Where the training set is archived' },
+        base_model: { type: 'string' },
+        metrics: { type: 'object', additionalProperties: { type: 'number' }, default: {} },
+      },
+      required: ['source_skill_id', 'version', 'adapter_uri', 'training_data_uri', 'base_model'],
+    },
+    schema: RegisterLoraAdapterInput,
+    handler: async (args: z.infer<typeof RegisterLoraAdapterInput>, ctx: ToolContext) => {
+      const approved = await ctx.skillStore.search({ onlyApproved: true });
+      if (!approved.some(s => s.id === args.sourceSkillId)) {
+        throw new ToolRejection(
+          'skill_not_approved',
+          `Skill ${args.sourceSkillId} has no approved version; a LoRA artifact must link to an approved skill`,
+        );
+      }
+      const artifact: LoraArtifact = {
+        id: `lora-${randomUUID()}`,
+        sourceSkillId: args.sourceSkillId,
+        version: args.version,
+        adapterUri: args.adapterUri,
+        trainingDataUri: args.trainingDataUri,
+        baseModel: args.baseModel,
+        metrics: args.metrics,
+        registeredBy: ctx.principal.id,
+        createdAt: new Date().toISOString(),
+      };
+      await ctx.store.putLora(artifact);
+      return { artifact };
     },
   },
 ];

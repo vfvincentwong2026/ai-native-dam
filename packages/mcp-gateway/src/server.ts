@@ -29,6 +29,8 @@ export interface GatewayOptions {
   skillStore?: SkillStore;
   /** Confirmation-token persistence. Defaults to in-memory (lost on restart). */
   approvalStore?: ApprovalStore;
+  /** Usage count at which a distillation request flips to awaiting_approval. Default 20. */
+  distillationThreshold?: number;
   approvalTtlMs?: number;
   serverName?: string;
   serverVersion?: string;
@@ -149,7 +151,10 @@ export function createGateway(options: GatewayOptions): Gateway {
         }
 
         try {
-          const result = await tool.handler(parsed.data as never, { state, store, skillStore, principal });
+          const result = await tool.handler(parsed.data as never, {
+            state, store, skillStore, principal,
+            distillationThreshold: options.distillationThreshold ?? 20,
+          });
           return rpcOk(id, { ...toolResult(internalToWire(result)), ...deprecation });
         } catch (err) {
           if (err instanceof ToolRejection) {

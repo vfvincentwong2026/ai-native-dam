@@ -169,8 +169,10 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
 
 | Tool | Risk | Gated | Status |
 |---|---|---|---|
-| `request_distillation` | medium | ✅ | planned |
-| `register_lora_adapter` | high | ✅ | planned |
+| `request_distillation` | medium | ✅ | implemented (gateway, Phase 4) |
+| `approve_distillation` | high | ✅ | implemented (gateway, Phase 4) |
+| `search_distillations` | low | — | implemented (gateway, Phase 4) |
+| `register_lora_adapter` | high | ✅ | implemented (gateway, Phase 4) |
 
 ---
 

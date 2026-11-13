@@ -19,6 +19,8 @@ const DOCUMENTED_TOOLS = [
   'submit_system_spec',
   'search_specs',
   'request_distillation',
+  'approve_distillation',
+  'search_distillations',
   'register_lora_adapter',
 ];
 

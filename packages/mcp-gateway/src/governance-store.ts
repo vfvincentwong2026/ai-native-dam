@@ -1,6 +1,9 @@
 import type {
   Asset,
+  DistillationRequest,
+  DistillationStatus,
   KnowledgeEntry,
+  LoraArtifact,
   RightsRecord,
   SkillUsageRecord,
   SystemSpec,
@@ -46,6 +49,13 @@ export interface GovernanceStore {
   getSpec(id: string): Promise<SystemSpec | undefined>;
   putSpec(spec: SystemSpec): Promise<void>;
   listSpecs(status?: SystemSpecStatus): Promise<SystemSpec[]>;
+
+  getDistillation(id: string): Promise<DistillationRequest | undefined>;
+  putDistillation(request: DistillationRequest): Promise<void>;
+  listDistillations(status?: DistillationStatus): Promise<DistillationRequest[]>;
+
+  putLora(artifact: LoraArtifact): Promise<void>;
+  listLoras(sourceSkillId?: string): Promise<LoraArtifact[]>;
 
   close?(): Promise<void>;
 }
@@ -124,5 +134,27 @@ export class MemoryGovernanceStore implements GovernanceStore {
   async listSpecs(status?: SystemSpecStatus): Promise<SystemSpec[]> {
     const all = [...this.state.specs.values()];
     return status ? all.filter(s => s.status === status) : all;
+  }
+
+  async getDistillation(id: string): Promise<DistillationRequest | undefined> {
+    return this.state.distillations.get(id);
+  }
+
+  async putDistillation(request: DistillationRequest): Promise<void> {
+    this.state.distillations.set(request.id, request);
+  }
+
+  async listDistillations(status?: DistillationStatus): Promise<DistillationRequest[]> {
+    const all = [...this.state.distillations.values()];
+    return status ? all.filter(d => d.status === status) : all;
+  }
+
+  async putLora(artifact: LoraArtifact): Promise<void> {
+    this.state.loras.set(artifact.id, artifact);
+  }
+
+  async listLoras(sourceSkillId?: string): Promise<LoraArtifact[]> {
+    const all = [...this.state.loras.values()];
+    return sourceSkillId ? all.filter(l => l.sourceSkillId === sourceSkillId) : all;
   }
 }
