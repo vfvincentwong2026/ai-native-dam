@@ -71,6 +71,17 @@ function happyPathHandler(calls: RecordedCall[]): Handler {
     if (call.name === 'search_specs') {
       return { specs: [SPEC] };
     }
+    if (call.name === 'search_skills') {
+      return {
+        skills: [{ id: 'operations:project-context', version: '0.1.0', status: 'approved' }],
+      };
+    }
+    if (call.name === 'apply_skill') {
+      if (!call.arguments._confirmation) {
+        return { approval_required: true, confirmation_token: 'tok-skill', risk_level: 'medium' };
+      }
+      return { usageId: 'su-1', applied: true };
+    }
     if (call.name === 'register_generated_system') {
       if (!call.arguments._confirmation) {
         return { approval_required: true, confirmation_token: 'tok-1', risk_level: 'high' };
@@ -329,7 +340,72 @@ describe('Orchestrator', () => {
     const failed = orch.runStore.get(run.id);
     expect(failed?.state).toBe('failed');
     expect(failed?.error).toContain('budget');
-    // only the spec read happened — no register attempt
-    expect(gw.calls.filter((c) => c.name !== 'search_specs')).toHaveLength(0);
+    // skill usage was recorded, but the run never reached registration
+    expect(gw.calls.filter((c) => c.name === 'register_generated_system')).toHaveLength(0);
+  });
+
+  it('records apply_skill usage for every spec provenance skill before compiling', async () => {
+    const gw = fakeGateway((call) => {
+      if (call.name === 'search_skills') {
+        return {
+          skills: [
+            { id: 'operations:project-context', version: '0.1.0', status: 'approved' },
+            { id: 'operations:project-context', version: '0.2.0', status: 'approved' },
+          ],
+        };
+      }
+      return happyPathHandler([])(call);
+    });
+    const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
+    const orch = new Orchestrator(client);
+
+    const run = await orch.startRun('spec-1');
+    const completer: BlueprintCompleter = { async complete() { return { text: '// x' }; } };
+    await orch.compile(run.id, completer);
+
+    // latest approved version resolved via search_skills, then apply_skill
+    // ran the gated two-call flow (auto-confirmed: the spec is already approved)
+    const applyCalls = gw.calls.filter((c) => c.name === 'apply_skill');
+    expect(applyCalls).toHaveLength(2);
+    expect(applyCalls[0].arguments._confirmation).toBeUndefined();
+    expect(applyCalls[1].arguments._confirmation).toBe('tok-skill');
+    expect(applyCalls[0].arguments.skill_id).toBe('operations:project-context');
+    expect(applyCalls[0].arguments.version).toBe('0.2.0');
+    expect(applyCalls[0].arguments.target_system_id).toBe('spec-1');
+    expect(applyCalls[0].arguments.context).toContain(`run=${run.id}`);
+
+    // usage is inspectable run-locally
+    expect(orch.getSkillUsages(run.id)).toEqual([
+      { skillId: 'operations:project-context', version: '0.2.0', usageId: 'su-1' },
+    ]);
+  });
+
+  it('fails the run when a provenance skill has no approved version (broken chain)', async () => {
+    const gw = fakeGateway((call) => {
+      if (call.name === 'search_skills') {
+        return { skills: [{ id: 'operations:project-context', version: '0.1.0', status: 'revoked' }] };
+      }
+      return happyPathHandler([])(call);
+    });
+    const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
+    const orch = new Orchestrator(client);
+
+    const run = await orch.startRun('spec-1');
+    let completerCalled = false;
+    const completer: BlueprintCompleter = {
+      async complete() {
+        completerCalled = true;
+        return { text: '// x' };
+      },
+    };
+    await expect(orch.compile(run.id, completer)).rejects.toThrow(/no approved version/);
+
+    const failed = orch.runStore.get(run.id);
+    expect(failed?.state).toBe('failed');
+    expect(failed?.error).toContain('skill provenance broken');
+    // no LLM call, no usage record, no registration
+    expect(completerCalled).toBe(false);
+    expect(gw.calls.filter((c) => c.name === 'apply_skill')).toHaveLength(0);
+    expect(gw.calls.filter((c) => c.name === 'register_generated_system')).toHaveLength(0);
   });
 });

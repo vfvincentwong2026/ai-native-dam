@@ -8,6 +8,14 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Skill usage recording in the compile path (ADR 0010 §5): `compile()` now
+  leaves one `apply_skill` usage record per provenance skill of the spec
+  BEFORE generating — latest approved version resolved via `search_skills`,
+  gated two-call flow auto-confirmed (the human decision happened at spec
+  approval), records inspectable via `getSkillUsages`. A provenance skill
+  with no approved version breaks the chain and fails the run before any
+  LLM call. These records feed the distillation threshold (ADR 0003/0008).
+
 - Blueprint executor closes the compile loop (ADR 0010 §7):
   `runtime/compilation` gains `executeBlueprint` — runs the prompt plan in
   order through an injected `BlueprintCompleter` seam (structurally

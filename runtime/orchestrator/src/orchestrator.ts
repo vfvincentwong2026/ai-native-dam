@@ -7,9 +7,10 @@
  * whitelisted McpClient. It holds no approval logic of its own: the run
  * pauses at `awaiting_registration` until a human confirms out of band.
  *
- * Not included yet (per ADR 0010 Deferred): the compilation pipeline itself
- * and the model router. `completeCompilation` / `requestRegistration` are
- * the seams where those plug in.
+ * Not included yet (per ADR 0010 Deferred): sandboxed build/smoke
+ * verification (the gate is structural-only for now) and the A2A entry.
+ * `completeCompilation` remains the seam for externally-built code trees;
+ * `compile` runs the in-process pipeline through an injected completer.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -52,6 +53,34 @@ export interface RegistrationRequest extends PendingRegistration {
   readonly build?: BuildOutput;
 }
 
+/** One apply_skill usage record left on the governance plane during compile. */
+export interface AppliedSkill {
+  readonly skillId: string;
+  readonly version: string;
+  readonly usageId: string;
+}
+
+interface SkillsPage {
+  skills?: Array<{ id?: string; version?: string; status?: string }>;
+}
+
+interface ApplySkillResult {
+  usageId?: string | null;
+  applied?: boolean;
+  reason?: string;
+}
+
+/** Numeric semver-ish compare (x.y.z); non-numeric parts compare as 0. */
+function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const pb = b.split('.').map((n) => Number.parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
 interface SpecsPage {
   specs?: Array<Record<string, unknown>>;
 }
@@ -85,6 +114,8 @@ export class Orchestrator {
   private readonly verifyReports = new Map<string, VerifyReport>();
   /** Run-local compiled builds: run id → generated code tree (in-memory). */
   private readonly builds = new Map<string, CompiledBuild>();
+  /** Run-local skill usage records: run id → applied provenance skills. */
+  private readonly skillUsages = new Map<string, AppliedSkill[]>();
 
   constructor(
     private readonly client: McpClient,
@@ -167,6 +198,11 @@ export class Orchestrator {
       throw new Error(`run ${runId} has no blueprint to compile`);
     }
     try {
+      // Record usage for every skill the spec declares as provenance BEFORE
+      // generating (ADR 0010 §5): these calls feed the distillation
+      // threshold (ADR 0003/0008). A skill that no longer resolves to an
+      // approved version breaks the provenance chain → the run fails.
+      await this.applyProvenanceSkills(run, blueprint);
       const build = await executeBlueprint(blueprint, { runId, completer });
       this.builds.set(runId, build);
       return this.runs.advance(runId, 'verifying', { buildRef: `build://${runId}` });
@@ -180,6 +216,55 @@ export class Orchestrator {
   /** The compiled build for a run (undefined until `compile` completes). */
   getBuild(runId: string): CompiledBuild | undefined {
     return this.builds.get(runId);
+  }
+
+  /** Skill usage records left for a run (undefined until `compile` ran). */
+  getSkillUsages(runId: string): readonly AppliedSkill[] | undefined {
+    return this.skillUsages.get(runId);
+  }
+
+  /**
+   * Leave one `apply_skill` usage record per provenance skill of the spec.
+   * The tool is medium-risk gated; the orchestrator auto-confirms because
+   * the human decision already happened at spec approval — these skills are
+   * exactly the provenance the approved spec declared.
+   */
+  private async applyProvenanceSkills(run: BuildRun, blueprint: Blueprint): Promise<void> {
+    const usages: AppliedSkill[] = [];
+    for (const skillId of blueprint.provenance.sourceSkillIds) {
+      const version = await this.resolveApprovedSkillVersion(skillId);
+      if (!version) {
+        throw new Error(`skill provenance broken: ${skillId} has no approved version on the governance plane`);
+      }
+      const args = {
+        skill_id: skillId,
+        version,
+        target_system_id: run.specId,
+        context: `builder-runtime compile run=${run.id} blueprint=${blueprint.id}`,
+      };
+      const begin = await this.client.beginGated('apply_skill', args);
+      const result = (
+        begin.executed
+          ? begin.result
+          : await this.client.confirmGated('apply_skill', args, begin.challenge.confirmationToken)
+      ) as ApplySkillResult;
+      if (result.applied !== true || !result.usageId) {
+        throw new Error(`skill ${skillId}@${version} rejected: ${result.reason ?? 'no usage record returned'}`);
+      }
+      usages.push({ skillId, version, usageId: result.usageId });
+    }
+    this.skillUsages.set(run.id, usages);
+  }
+
+  /** Latest approved version of a skill id, or null when none exists. */
+  private async resolveApprovedSkillVersion(skillId: string): Promise<string | null> {
+    const page = (await this.client.call('search_skills', { query: skillId, only_approved: true })) as SkillsPage;
+    const versions = (page.skills ?? [])
+      .filter((s) => s.id === skillId && s.status === 'approved')
+      .map((s) => s.version)
+      .filter((v): v is string => typeof v === 'string');
+    if (versions.length === 0) return null;
+    return versions.sort(compareVersions)[versions.length - 1];
   }
 
   /**
