@@ -1,6 +1,7 @@
 import type {
   Asset,
   DistillationRequest,
+  GeneratedSystem,
   KnowledgeEntry,
   LoraArtifact,
   RightsRecord,
@@ -34,6 +35,8 @@ export interface GatewayState {
   distillations: Map<string, DistillationRequest>;
   /** LoRA artifact id → registered adapter metadata */
   loras: Map<string, LoraArtifact>;
+  /** generated system id → registered system (provenance → spec) */
+  systems: Map<string, GeneratedSystem>;
 }
 
 export interface StateSeed {
@@ -46,6 +49,7 @@ export interface StateSeed {
   specs?: SystemSpec[];
   distillations?: DistillationRequest[];
   loras?: LoraArtifact[];
+  systems?: GeneratedSystem[];
 }
 
 export function createState(seed: StateSeed = {}): GatewayState {
@@ -59,6 +63,7 @@ export function createState(seed: StateSeed = {}): GatewayState {
     specs: new Map(),
     distillations: new Map(),
     loras: new Map(),
+    systems: new Map(),
   };
   for (const asset of seed.assets ?? []) state.assets.set(asset.id, asset);
   for (const rights of seed.rights ?? []) state.rights.set(rights.assetId, rights);
@@ -69,5 +74,6 @@ export function createState(seed: StateSeed = {}): GatewayState {
   for (const spec of seed.specs ?? []) state.specs.set(spec.id, spec);
   for (const d of seed.distillations ?? []) state.distillations.set(d.id, d);
   for (const l of seed.loras ?? []) state.loras.set(l.id, l);
+  for (const s of seed.systems ?? []) state.systems.set(s.id, s);
   return state;
 }

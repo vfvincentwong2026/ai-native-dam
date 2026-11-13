@@ -23,6 +23,8 @@ const DOCUMENTED_TOOLS = [
   'search_distillations',
   'register_lora_adapter',
   'search_loras',
+  'register_generated_system',
+  'search_systems',
 ];
 
 describe('MCP_TOOLS registry', () => {

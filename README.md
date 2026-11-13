@@ -324,6 +324,8 @@ The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each
 | `submit_system_spec` | high | ✅ | Submit for approval; generation runs **only after approval** |
 | `search_specs` | low | — | Query System Specs by status and title/domain substring |
 | `register_generated_system` | high | ✅ | Register the output as a governed asset with full provenance |
+| `search_systems` | low | — | Query registered systems by status and name substring |
+| `search_systems` | low | — | Query registered generated systems by status and name |
 
 ### Distillation
 

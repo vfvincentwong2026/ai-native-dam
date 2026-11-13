@@ -484,6 +484,76 @@ describe('search_specs', () => {
   });
 });
 
+describe('register_generated_system / search_systems', () => {
+  async function gated(name: string, args: Record<string, unknown>) {
+    const first = unwrapToolJson({ body: (await callTool(name, args)).body });
+    expect(first.approval_required).toBe(true);
+    return unwrapToolJson({ body: (await callTool(name, { ...args, _confirmation: first.confirmation_token })).body });
+  }
+
+  async function approvedSpec(title: string) {
+    const drafted = await gated('generate_system_spec', {
+      title, business_domain: 'sys-reg', requirements: `${title} requirements.`,
+      source_skill_ids: ['content:approved-src'],
+    });
+    const submitted = await gated('submit_system_spec', { spec_id: drafted.spec_id });
+    return submitted.spec;
+  }
+
+  it('registers a system from an approved spec, copies provenance, closes the spec', async () => {
+    const spec = await approvedSpec('Registry Target Console');
+    const out = await gated('register_generated_system', {
+      source_spec_id: spec.id, name: 'Registry Target Console', version: '0.1.0',
+      endpoint_uri: 'https://systems.example.com/registry-target',
+    });
+    expect(out.system.id).toMatch(/^sys-/);
+    expect(out.system.status).toBe('registered');
+    expect(out.system.registered_by).toBe('editor');
+    expect(out.system.source_spec_id).toBe(spec.id);
+    expect(out.system.source_skill_ids).toEqual(['content:approved-src']);
+    expect(out.system.endpoint_uri).toBe('https://systems.example.com/registry-target');
+    expect(out.spec.status).toBe('generated');
+
+    // registering the same (now generated) spec again is rejected
+    const again = await gated('register_generated_system', {
+      source_spec_id: spec.id, name: 'Duplicate', version: '0.1.0',
+    });
+    expect(again.rejected).toBe(true);
+    expect(again.reason).toBe('invalid_status_transition');
+  });
+
+  it('rejects drafts and missing specs', async () => {
+    const drafted = await gated('generate_system_spec', {
+      title: 'Still Draft', business_domain: 'sys-reg', requirements: 'never submitted.',
+    });
+    const fromDraft = await gated('register_generated_system', {
+      source_spec_id: drafted.spec_id, name: 'Draft System', version: '0.1.0',
+    });
+    expect(fromDraft.rejected).toBe(true);
+    expect(fromDraft.reason).toBe('invalid_status_transition');
+
+    const ghost = await gated('register_generated_system', {
+      source_spec_id: 'spec-ghost', name: 'Ghost', version: '0.1.0',
+    });
+    expect(ghost.rejected).toBe(true);
+    expect(ghost.reason).toBe('spec_not_found');
+  });
+
+  it('search_systems lists with status filter and name query, read-scoped allowed', async () => {
+    const all = unwrapToolJson({ body: (await callTool('search_systems', {}, 'read-token')).body });
+    expect(all.systems.some((s: { name: string }) => s.name === 'Registry Target Console')).toBe(true);
+
+    const registered = unwrapToolJson({ body: (await callTool('search_systems', { status: 'registered' }, 'read-token')).body });
+    expect(registered.systems.every((s: { status: string }) => s.status === 'registered')).toBe(true);
+
+    const hit = unwrapToolJson({ body: (await callTool('search_systems', { query: 'registry target' }, 'read-token')).body });
+    expect(hit.systems).toHaveLength(1);
+
+    const miss = unwrapToolJson({ body: (await callTool('search_systems', { query: 'no-such-system-xyz' }, 'read-token')).body });
+    expect(miss.systems).toHaveLength(0);
+  });
+});
+
 describe('distillation decision gate', () => {
   let distBase: string;
   let distServer: ReturnType<typeof createGateway>['server'];

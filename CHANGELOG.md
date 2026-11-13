@@ -6,6 +6,14 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `register_generated_system` + `search_systems` close the Phase 2 loop: an
+  approved System Spec can be registered as a governed generated-system asset
+  (provenance denormalized from the spec, spec transitions `approved` →
+  `generated`), with the `generated_systems` collection durable in both
+  governance store backends (`migrations/0006_generated_systems.sql`).
+
 ### Changed
 
 - `check_use` renamed to `check_usage_rights` across schema, gateway, showcase,

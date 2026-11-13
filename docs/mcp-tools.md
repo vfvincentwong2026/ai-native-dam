@@ -161,7 +161,8 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
 | `generate_system_spec` | medium | ✅ | implemented (gateway, Phase 2) |
 | `submit_system_spec` | high | ✅ | implemented (gateway, Phase 2) |
 | `search_specs` | low | — | implemented (gateway, Phase 2) |
-| `register_generated_system` | high | ✅ | planned |
+| `register_generated_system` | high | ✅ | implemented (gateway, Phase 2) |
+| `search_systems` | low | — | implemented (gateway, Phase 2) |
 
 ---
 

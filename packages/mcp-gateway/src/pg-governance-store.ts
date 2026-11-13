@@ -2,6 +2,8 @@ import type {
   Asset,
   DistillationRequest,
   DistillationStatus,
+  GeneratedSystem,
+  GeneratedSystemStatus,
   KnowledgeEntry,
   LoraArtifact,
   RightsRecord,
@@ -102,6 +104,18 @@ CREATE TABLE IF NOT EXISTS lora_artifacts (
   metrics           jsonb NOT NULL DEFAULT '{}',
   registered_by     text NOT NULL,
   created_at        timestamptz NOT NULL
+);
+CREATE TABLE IF NOT EXISTS generated_systems (
+  id                   text PRIMARY KEY,
+  name                 text NOT NULL,
+  version              text NOT NULL,
+  source_spec_id       text NOT NULL,
+  endpoint_uri         text,
+  status               text NOT NULL CHECK (status IN ('registered','active','deprecated')),
+  source_skill_ids     text[] NOT NULL DEFAULT '{}',
+  source_knowledge_ids text[] NOT NULL DEFAULT '{}',
+  registered_by        text NOT NULL,
+  created_at           timestamptz NOT NULL
 )`;
 
 /** pg and PGlite both return Date for timestamptz; normalize to ISO strings. */
@@ -214,6 +228,21 @@ function rowToLora(r: any): LoraArtifact {
     trainingDataUri: r.training_data_uri,
     baseModel: r.base_model,
     metrics: r.metrics ?? {},
+    registeredBy: r.registered_by,
+    createdAt: iso(r.created_at) as string,
+  };
+}
+
+function rowToSystem(r: any): GeneratedSystem {
+  return {
+    id: r.id,
+    name: r.name,
+    version: r.version,
+    sourceSpecId: r.source_spec_id,
+    endpointUri: r.endpoint_uri ?? null,
+    status: r.status,
+    sourceSkillIds: r.source_skill_ids ?? [],
+    sourceKnowledgeIds: r.source_knowledge_ids ?? [],
     registeredBy: r.registered_by,
     createdAt: iso(r.created_at) as string,
   };
@@ -433,5 +462,29 @@ export class PgGovernanceStore implements GovernanceStore {
       ? await this.db.query('SELECT * FROM lora_artifacts WHERE source_skill_id = $1 ORDER BY created_at, id', [sourceSkillId])
       : await this.db.query('SELECT * FROM lora_artifacts ORDER BY created_at, id');
     return rows.map(rowToLora);
+  }
+
+  async getSystem(id: string): Promise<GeneratedSystem | undefined> {
+    const { rows } = await this.db.query('SELECT * FROM generated_systems WHERE id = $1', [id]);
+    return rows[0] ? rowToSystem(rows[0]) : undefined;
+  }
+
+  async putSystem(system: GeneratedSystem): Promise<void> {
+    await this.db.query(
+      `INSERT INTO generated_systems (id, name, version, source_spec_id, endpoint_uri, status,
+                                      source_skill_ids, source_knowledge_ids, registered_by, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       ON CONFLICT (id) DO UPDATE SET
+         status = EXCLUDED.status, endpoint_uri = EXCLUDED.endpoint_uri`,
+      [system.id, system.name, system.version, system.sourceSpecId, system.endpointUri, system.status,
+       system.sourceSkillIds, system.sourceKnowledgeIds, system.registeredBy, system.createdAt],
+    );
+  }
+
+  async listSystems(status?: GeneratedSystemStatus): Promise<GeneratedSystem[]> {
+    const { rows } = status
+      ? await this.db.query('SELECT * FROM generated_systems WHERE status = $1 ORDER BY created_at, id', [status])
+      : await this.db.query('SELECT * FROM generated_systems ORDER BY created_at, id');
+    return rows.map(rowToSystem);
   }
 }

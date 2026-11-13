@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Asset, DistillationRequest, KnowledgeEntry, LoraArtifact, RightsRecord, SkillUsageRecord, SystemSpec, UsageRecord } from '@ai-native-dam/shared-schema';
+import type { Asset, DistillationRequest, GeneratedSystem, KnowledgeEntry, LoraArtifact, RightsRecord, SkillUsageRecord, SystemSpec, UsageRecord } from '@ai-native-dam/shared-schema';
 import { openPgBackend } from './pg-backend.js';
 import { PgGovernanceStore } from './pg-governance-store.js';
 import { PgSkillStore } from './pg-skill-store.js';
@@ -102,6 +102,19 @@ const lora: LoraArtifact = {
   createdAt: '2026-01-06T00:00:00.000Z',
 };
 
+const system: GeneratedSystem = {
+  id: 'sys-0001',
+  name: 'Campaign Ops Console',
+  version: '0.1.0',
+  sourceSpecId: 'spec-0001',
+  endpointUri: 'https://systems.example.com/campaign-ops',
+  status: 'registered',
+  sourceSkillIds: ['operations:project-context'],
+  sourceKnowledgeIds: ['kn-0001'],
+  registeredBy: 'editor',
+  createdAt: '2026-01-07T00:00:00.000Z',
+};
+
 const dirs: string[] = [];
 async function tempDir(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'dam-pggov-'));
@@ -117,7 +130,7 @@ afterEach(async () => {
 });
 
 describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
-  it('round-trips all eight collections', async () => {
+  it('round-trips all nine collections', async () => {
     const backend = await openPgBackend({ dataDir: await tempDir() });
     const store = await PgGovernanceStore.over(backend.db);
 
@@ -129,6 +142,7 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     await store.putSpec(spec);
     await store.putDistillation(distillation);
     await store.putLora(lora);
+    await store.putSystem(system);
 
     expect(await store.getAsset(asset.id)).toEqual(asset);
     expect(await store.getRights(asset.id)).toEqual(rights);
@@ -141,6 +155,9 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     expect(await store.getDistillation(distillation.id)).toEqual(distillation);
     expect(await store.listDistillations('awaiting_approval')).toEqual([distillation]);
     expect(await store.listLoras(lora.sourceSkillId)).toEqual([lora]);
+    expect(await store.getSystem(system.id)).toEqual(system);
+    expect(await store.listSystems('registered')).toEqual([system]);
+    expect(await store.listSystems('active')).toEqual([]);
 
     const joined = await store.listAssetsWithRights();
     expect(joined).toHaveLength(1);
@@ -179,6 +196,7 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     await s1.putSpec({ ...spec, status: 'approved', approvedAt: '2026-01-05T00:00:00.000Z', approvedBy: 'editor' });
     await s1.putDistillation({ ...distillation, status: 'training', approvedAt: '2026-01-06T00:00:00.000Z', approvedBy: 'editor' });
     await s1.putLora(lora);
+    await s1.putSystem(system);
     await first.close();
 
     const second = await openPgBackend({ dataDir: dir });
@@ -193,6 +211,10 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     expect(reloaded?.entities).toEqual(spec.entities);
     expect((await s2.getDistillation(distillation.id))?.status).toBe('training');
     expect((await s2.listLoras())[0].metrics).toEqual({ eval_loss: 0.42 });
+    const sysReloaded = await s2.getSystem(system.id);
+    expect(sysReloaded?.status).toBe('registered');
+    expect(sysReloaded?.sourceSpecId).toBe('spec-0001');
+    expect(sysReloaded?.sourceSkillIds).toEqual(['operations:project-context']);
     await second.close();
   });
 });

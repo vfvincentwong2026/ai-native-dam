@@ -2,6 +2,8 @@ import type {
   Asset,
   DistillationRequest,
   DistillationStatus,
+  GeneratedSystem,
+  GeneratedSystemStatus,
   KnowledgeEntry,
   LoraArtifact,
   RightsRecord,
@@ -56,6 +58,10 @@ export interface GovernanceStore {
 
   putLora(artifact: LoraArtifact): Promise<void>;
   listLoras(sourceSkillId?: string): Promise<LoraArtifact[]>;
+
+  getSystem(id: string): Promise<GeneratedSystem | undefined>;
+  putSystem(system: GeneratedSystem): Promise<void>;
+  listSystems(status?: GeneratedSystemStatus): Promise<GeneratedSystem[]>;
 
   close?(): Promise<void>;
 }
@@ -156,5 +162,18 @@ export class MemoryGovernanceStore implements GovernanceStore {
   async listLoras(sourceSkillId?: string): Promise<LoraArtifact[]> {
     const all = [...this.state.loras.values()];
     return sourceSkillId ? all.filter(l => l.sourceSkillId === sourceSkillId) : all;
+  }
+
+  async getSystem(id: string): Promise<GeneratedSystem | undefined> {
+    return this.state.systems.get(id);
+  }
+
+  async putSystem(system: GeneratedSystem): Promise<void> {
+    this.state.systems.set(system.id, system);
+  }
+
+  async listSystems(status?: GeneratedSystemStatus): Promise<GeneratedSystem[]> {
+    const all = [...this.state.systems.values()];
+    return status ? all.filter(s => s.status === status) : all;
   }
 }

@@ -29,6 +29,10 @@ import {
   SubmitSystemSpecOutput,
   SearchSpecsInput,
   SearchSpecsOutput,
+  RegisterGeneratedSystemInput,
+  RegisterGeneratedSystemOutput,
+  SearchSystemsInput,
+  SearchSystemsOutput,
 } from './systems.js';
 import {
   SearchKnowledgeInput,
@@ -213,6 +217,29 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     scopes: ['Suggest', 'Read', 'Edit'],
     input: SearchSpecsInput,
     output: SearchSpecsOutput,
+  },
+  {
+    name: 'register_generated_system',
+    description:
+      'Register a built system as a governed asset, linked to an approved System Spec. ' +
+      'High risk, always gated. Records provenance from the spec (source skills/knowledge) and ' +
+      'transitions the spec to generated. Registration only — does not deploy or start the system.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    input: RegisterGeneratedSystemInput,
+    output: RegisterGeneratedSystemOutput,
+  },
+  {
+    name: 'search_systems',
+    description:
+      'Query registered generated systems by status and name substring. Read-only; ' +
+      'returns registry metadata and provenance pointers, never runtime internals.',
+    riskLevel: 'low',
+    gated: false,
+    scopes: ['Suggest', 'Read', 'Edit'],
+    input: SearchSystemsInput,
+    output: SearchSystemsOutput,
   },
   {
     name: 'search_knowledge',

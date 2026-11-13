@@ -22,8 +22,11 @@ import {
   SearchDistillationsInput,
   RegisterLoraAdapterInput,
   SearchLorasInput,
+  RegisterGeneratedSystemInput,
+  SearchSystemsInput,
   type Asset,
   type DistillationRequest,
+  type GeneratedSystem,
   type KnowledgeEntry,
   type LoraArtifact,
   type McpScope,
@@ -685,6 +688,82 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         specs = specs.filter(s => `${s.title} ${s.businessDomain}`.toLowerCase().includes(q));
       }
       return { specs: specs.slice(0, args.limit) };
+    },
+  },
+  {
+    name: 'register_generated_system',
+    description:
+      'Register a built system as a governed asset, linked to an approved System Spec. ' +
+      'High risk, always gated. Provenance (source skills/knowledge) is copied from the spec, and ' +
+      'the spec transitions approved → generated. Registration only — does not deploy, start, or ' +
+      'expose the system; deployment goes through the Deployment Plane (ADR 0009).',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source_spec_id: { type: 'string', minLength: 1, description: 'Approved spec this system was built from' },
+        name: { type: 'string', minLength: 1 },
+        version: { type: 'string', minLength: 1, description: 'System version, e.g. 0.1.0' },
+        endpoint_uri: { type: 'string', format: 'uri', description: 'Optional URL where the system is reachable' },
+      },
+      required: ['source_spec_id', 'name', 'version'],
+    },
+    schema: RegisterGeneratedSystemInput,
+    handler: async (args: z.infer<typeof RegisterGeneratedSystemInput>, ctx: ToolContext) => {
+      const spec = await ctx.store.getSpec(args.sourceSpecId);
+      if (!spec) {
+        throw new ToolRejection('spec_not_found', `System spec ${args.sourceSpecId} does not exist`);
+      }
+      if (spec.status !== 'approved') {
+        throw new ToolRejection(
+          'invalid_status_transition',
+          `System spec ${args.sourceSpecId} has status ${spec.status}; only an approved spec can be registered as a system`,
+        );
+      }
+      const system: GeneratedSystem = {
+        id: `sys-${randomUUID()}`,
+        name: args.name,
+        version: args.version,
+        sourceSpecId: spec.id,
+        endpointUri: args.endpointUri ?? null,
+        status: 'registered',
+        sourceSkillIds: spec.sourceSkillIds,
+        sourceKnowledgeIds: spec.sourceKnowledgeIds,
+        registeredBy: ctx.principal.id,
+        createdAt: new Date().toISOString(),
+      };
+      await ctx.store.putSystem(system);
+      const generated: SystemSpec = { ...spec, status: 'generated' };
+      await ctx.store.putSpec(generated);
+      return { system, spec: generated };
+    },
+  },
+  {
+    name: 'search_systems',
+    description:
+      'Query registered generated systems by status and name substring. Read-only; ' +
+      'returns registry metadata and provenance pointers, never runtime internals.',
+    riskLevel: 'low',
+    gated: false,
+    scopes: ['Suggest', 'Read', 'Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['registered', 'active', 'deprecated'] },
+        query: { type: 'string', description: 'Substring match on system name' },
+        limit: { type: 'integer', default: 20, maximum: 50 },
+      },
+    },
+    schema: SearchSystemsInput,
+    handler: async (args: z.infer<typeof SearchSystemsInput>, ctx: ToolContext) => {
+      let systems = await ctx.store.listSystems(args.status);
+      if (args.query) {
+        const q = args.query.toLowerCase();
+        systems = systems.filter(s => s.name.toLowerCase().includes(q));
+      }
+      return { systems: systems.slice(0, args.limit) };
     },
   },
   {
