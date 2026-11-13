@@ -25,4 +25,9 @@ export {
   type PendingRegistration,
   type RunState,
 } from './run.js';
-export { Orchestrator, type RegistrationRequest, type SpecSummary } from './orchestrator.js';
+export {
+  Orchestrator,
+  VerificationFailedError,
+  type RegistrationRequest,
+  type SpecSummary,
+} from './orchestrator.js';

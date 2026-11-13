@@ -14,9 +14,24 @@
 
 import { randomUUID } from 'node:crypto';
 import type { SystemSpec } from '@ai-native-dam/shared-schema';
-import { planBlueprint, type Blueprint } from '@ai-native-dam/runtime-compilation';
+import {
+  planBlueprint,
+  verifyBuild,
+  type Blueprint,
+  type BuildOutput,
+  type VerifyReport,
+} from '@ai-native-dam/runtime-compilation';
 import { ToolRejectedError, type McpClient } from './mcp-client.js';
 import { assertTransition, RunStore, type BuildRun, type PendingRegistration } from './run.js';
+
+/** Verification gate failure: carries the deterministic report for review. */
+export class VerificationFailedError extends Error {
+  constructor(public readonly report: VerifyReport) {
+    const failed = report.checks.filter((c) => !c.ok).map((c) => c.name);
+    super(`verify-before-register failed: ${failed.join(', ')}`);
+    this.name = 'VerificationFailedError';
+  }
+}
 
 export interface SpecSummary {
   readonly id: string;
@@ -25,8 +40,8 @@ export interface SpecSummary {
 }
 
 export interface RegistrationRequest extends PendingRegistration {
-  /** Pointer to the verify-before-register report (ADR 0010 §4). */
-  readonly verifyReportRef: string;
+  /** The generated build to verify (file list + manifest contents). */
+  readonly build: BuildOutput;
 }
 
 interface SpecsPage {
@@ -58,6 +73,8 @@ function wireToSpec(raw: Record<string, unknown>): SystemSpec {
 export class Orchestrator {
   /** Run-local blueprint registry: blueprint id → plan (ADR 0010 §2, not governed). */
   private readonly blueprints = new Map<string, Blueprint>();
+  /** Run-local verify reports: run id → deterministic gate report. */
+  private readonly verifyReports = new Map<string, VerifyReport>();
 
   constructor(
     private readonly client: McpClient,
@@ -84,6 +101,11 @@ export class Orchestrator {
   getBlueprint(runId: string): Blueprint | undefined {
     const ref = this.runs.get(runId)?.blueprintRef;
     return ref ? this.blueprints.get(ref) : undefined;
+  }
+
+  /** The verify-before-register report for a run (undefined until the gate ran). */
+  getVerifyReport(runId: string): VerifyReport | undefined {
+    return this.verifyReports.get(runId);
   }
 
   private async fetchSpec(specId: string): Promise<SystemSpec> {
@@ -120,16 +142,36 @@ export class Orchestrator {
   }
 
   /**
-   * Verification passed: record the report and ask the gateway to register.
-   * The tool is high-risk gated, so this normally ends at
-   * `awaiting_registration` holding the confirmation token — the human
-   * decision happens before `confirmRegistration`.
+   * Verification gate + registration request (ADR 0010 §4).
+   *
+   * The deterministic build is verified against its Blueprint BEFORE the
+   * gateway is touched: a failed gate fails the run and never reaches the
+   * governance plane. On pass, the tool is high-risk gated, so this normally
+   * ends at `awaiting_registration` holding the confirmation token — the
+   * human decision happens before `confirmRegistration`.
    */
   async requestRegistration(runId: string, request: RegistrationRequest): Promise<BuildRun> {
     const run = this.mustGet(runId);
     // Validate the transition before touching the gateway — no side effects
     // from an illegal state.
     assertTransition(run, 'awaiting_registration');
+    const blueprint = run.blueprintRef ? this.blueprints.get(run.blueprintRef) : undefined;
+    if (!blueprint) {
+      const failedRun = this.runs.advance(runId, 'failed', {
+        error: 'no blueprint recorded for this run — cannot verify the build',
+      });
+      throw new Error(`run ${runId} has no blueprint to verify against (state ${failedRun.state})`);
+    }
+    // Verify-before-register: the deterministic gate decides, not the caller.
+    const report = verifyBuild(blueprint, request.build);
+    if (!report.ok) {
+      const failed = report.checks.filter((c) => !c.ok).map((c) => c.name);
+      this.runs.advance(runId, 'failed', { error: `verification failed: ${failed.join(', ')}` });
+      throw new VerificationFailedError(report);
+    }
+    const verifyReportRef = `verify://${runId}`;
+    this.verifyReports.set(runId, report);
+
     const args: Record<string, unknown> = {
       source_spec_id: run.specId,
       name: request.name,
@@ -143,11 +185,11 @@ export class Orchestrator {
       // execution if a future gateway auto-approves this principal. Walk the
       // state machine through both hops so the log stays truthful.
       const systemId = (begin.result as RegisterResult).system?.id ?? null;
-      this.runs.advance(runId, 'awaiting_registration', { verifyReportRef: request.verifyReportRef });
+      this.runs.advance(runId, 'awaiting_registration', { verifyReportRef });
       return this.runs.advance(runId, 'registered', { systemId });
     }
     return this.runs.advance(runId, 'awaiting_registration', {
-      verifyReportRef: request.verifyReportRef,
+      verifyReportRef,
       pendingConfirmation: begin.challenge.confirmationToken,
       pendingRegistration: {
         name: request.name,

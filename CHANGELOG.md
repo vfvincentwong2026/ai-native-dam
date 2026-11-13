@@ -8,6 +8,17 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- InstallableUnit L1 manifest generator + verify-before-register gate
+  (ADR 0009 §2, ADR 0010 §4): `runtime/compilation` gains
+  `generateManifest` (deterministic `dam.manifest.yaml` — declarative
+  packaging, standard `/health`, data boundary, carried skills, empty
+  secrets by construction) and `verifyBuild` (9 structural checks over the
+  build against its Blueprint, deterministic report). The orchestrator
+  welds the gate into `requestRegistration`: a failing build fails the run
+  with `VerificationFailedError` and never reaches the gateway; a passing
+  report is stored run-locally (`verify://<runId>`, `getVerifyReport`).
+  11 compilation + 11 orchestrator vitest cases.
+
 - Orchestrator ↔ compilation wiring (ADR 0010): `startRun` now fetches the
   spec from the governance plane, enforces approved-only entry, and plans the
   deterministic Blueprint immediately (`BuildRun.blueprintRef` +

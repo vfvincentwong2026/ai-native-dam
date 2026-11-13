@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { generateManifest, type Blueprint } from '@ai-native-dam/runtime-compilation';
 import {
   HttpMcpClient,
   InvalidTransitionError,
@@ -6,6 +7,7 @@ import {
   Orchestrator,
   RunStore,
   ToolRejectedError,
+  VerificationFailedError,
 } from './index.js';
 
 interface RecordedCall {
@@ -77,6 +79,11 @@ function happyPathHandler(calls: RecordedCall[]): Handler {
     }
     throw new Error(`unexpected tool ${call.name}`);
   };
+}
+
+/** A build that passes the verify gate: exactly the planned files + manifest. */
+function passingBuild(blueprint: Blueprint) {
+  return { files: blueprint.files.map((f) => f.path), manifest: generateManifest(blueprint) };
 }
 
 describe('HttpMcpClient', () => {
@@ -168,14 +175,19 @@ describe('Orchestrator', () => {
     expect(orch.runStore.get(run.id)?.state).toBe('verifying');
     expect(orch.runStore.get(run.id)?.buildRef).toBe('build://run-local/spec-1#tree');
 
+    if (!bp) throw new Error('blueprint missing');
     const awaiting = await orch.requestRegistration(run.id, {
       name: 'Order Admin',
       version: '0.1.0',
-      verifyReportRef: 'verify://run-local/spec-1#report',
+      build: passingBuild(bp),
     });
     expect(awaiting.state).toBe('awaiting_registration');
     expect(awaiting.pendingConfirmation).toBe('tok-1');
-    expect(awaiting.verifyReportRef).toBe('verify://run-local/spec-1#report');
+    expect(awaiting.verifyReportRef).toBe(`verify://${run.id}`);
+    // the deterministic gate report is inspectable and passed all checks
+    const report = orch.getVerifyReport(run.id);
+    expect(report?.ok).toBe(true);
+    expect(report?.checks.every((c) => c.ok)).toBe(true);
 
     // the first register call must NOT carry a confirmation token
     const registerCalls = gw.calls.filter((c) => c.name === 'register_generated_system');
@@ -189,6 +201,36 @@ describe('Orchestrator', () => {
     expect(gw.calls.filter((c) => c.name === 'register_generated_system')).toHaveLength(2);
   });
 
+  it('verify-before-register: a bad build fails the run and never touches the gateway', async () => {
+    const gw = fakeGateway(happyPathHandler([]));
+    const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
+    const orch = new Orchestrator(client);
+
+    const run = await orch.startRun('spec-1');
+    orch.completeCompilation(run.id, 'build://run-local/spec-1#tree');
+    const bp = orch.getBlueprint(run.id);
+    if (!bp) throw new Error('blueprint missing');
+
+    // drop one planned file → file_manifest_complete must fail
+    const badBuild = { files: bp.files.map((f) => f.path).slice(1), manifest: generateManifest(bp) };
+    try {
+      await orch.requestRegistration(run.id, { name: 'X', version: '0.0.1', build: badBuild });
+      expect.unreachable('the verify gate must reject an incomplete build');
+    } catch (err) {
+      expect(err).toBeInstanceOf(VerificationFailedError);
+      const failedChecks = (err as VerificationFailedError).report.checks
+        .filter((c) => !c.ok)
+        .map((c) => c.name);
+      expect(failedChecks).toContain('file_manifest_complete');
+    }
+
+    const failed = orch.runStore.get(run.id);
+    expect(failed?.state).toBe('failed');
+    expect(failed?.error).toContain('file_manifest_complete');
+    // the gateway was never asked to register
+    expect(gw.calls.filter((c) => c.name === 'register_generated_system')).toHaveLength(0);
+  });
+
   it('validates state before any gateway call (no side effects from illegal states)', async () => {
     const gw = fakeGateway(happyPathHandler([]));
     const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
@@ -196,7 +238,7 @@ describe('Orchestrator', () => {
     const run = await orch.startRun('spec-1');
 
     await expect(
-      orch.requestRegistration(run.id, { name: 'X', version: '0.0.1', verifyReportRef: 'r' }),
+      orch.requestRegistration(run.id, { name: 'X', version: '0.0.1', build: { files: [], manifest: '' } }),
     ).rejects.toThrow(InvalidTransitionError);
     await expect(orch.confirmRegistration(run.id)).rejects.toThrow(InvalidTransitionError);
     expect(gw.calls.filter((c) => c.name === 'register_generated_system')).toHaveLength(0);
@@ -233,7 +275,9 @@ describe('Orchestrator', () => {
 
     const run = await orch.startRun('spec-1');
     orch.completeCompilation(run.id, 'blueprint://x');
-    await orch.requestRegistration(run.id, { name: 'X', version: '0.0.1', verifyReportRef: 'r' });
+    const bp = orch.getBlueprint(run.id);
+    if (!bp) throw new Error('blueprint missing');
+    await orch.requestRegistration(run.id, { name: 'X', version: '0.0.1', build: passingBuild(bp) });
 
     await expect(orch.confirmRegistration(run.id)).rejects.toThrow(ToolRejectedError);
     const failed = orch.runStore.get(run.id);

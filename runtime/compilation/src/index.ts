@@ -15,3 +15,5 @@ export type {
   StackChoice,
 } from './blueprint.js';
 export { kebab, planBlueprint } from './plan.js';
+export { generateManifest, type ManifestOptions } from './manifest.js';
+export { verifyBuild, type BuildOutput, type VerifyCheck, type VerifyReport } from './verify.js';
