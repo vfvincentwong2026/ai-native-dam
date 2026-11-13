@@ -8,6 +8,15 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `runtime/model-router` OpenSquilla adapter (ADR 0010 §1/§6): the sole LLM
+  egress of the Builder Runtime. Tier routing maps OpenSquilla C0–C3 to
+  concrete models behind an injectable `ModelTransport` seam
+  (`SquillaHttpTransport` over HTTP); every call lands a run-local record
+  (tier / model / prompt summary / tokens / outcome — the full prompt is
+  never stored) feeding per-run cost rollups; run budgets (`maxCalls` /
+  `maxTotalTokens`) trip a `BudgetExceededError` breaker BEFORE the
+  transport is touched. 10 vitest cases, fully offline.
+
 - InstallableUnit L1 manifest generator + verify-before-register gate
   (ADR 0009 §2, ADR 0010 §4): `runtime/compilation` gains
   `generateManifest` (deterministic `dam.manifest.yaml` — declarative
