@@ -8,6 +8,14 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `runtime/orchestrator` Builder Runtime skeleton (ADR 0010): whitelisted MCP
+  client (`HttpMcpClient`, ADR 0010 §5 tool surface, two-call gated flow with
+  explicit `beginGated`/`confirmGated` seam), run state machine
+  (`queued → compiling → verifying → awaiting_registration → registered |
+  failed`, transition validation before any gateway call), and the
+  `Orchestrator` driving approved-spec discovery through to gated
+  registration. 9 vitest cases over a fake gateway.
+
 - `register_generated_system` + `search_systems` close the Phase 2 loop: an
   approved System Spec can be registered as a governed generated-system asset
   (provenance denormalized from the spec, spec transitions `approved` →

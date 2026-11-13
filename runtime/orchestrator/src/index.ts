@@ -1,28 +1,28 @@
 /**
- * Builder Runtime — orchestrator skeleton.
+ * Builder Runtime — orchestrator package (ADR 0010).
  *
- * Phase 2 responsibility: drive the Spec-first generation loop.
- * This file defines the contract only; no LLM calls, no MCP transport yet.
+ * Public surface: the whitelisted MCP client, the run state machine, and
+ * the Orchestrator driving approved specs to gated registration.
  */
 
-import type {
-  GenerateSystemSpecInput,
-  GenerateSystemSpecOutput,
-} from '@ai-native-dam/shared-schema';
-
-export interface OrchestratorContext {
-  readonly damMcpUrl: string;
-  readonly damToken: string;
-  readonly routerBaseUrl: string;
-}
-
-export interface Orchestrator {
-  generateSystemSpec(
-    input: GenerateSystemSpecInput,
-    ctx: OrchestratorContext,
-  ): Promise<GenerateSystemSpecOutput>;
-}
-
-export const PHASE_2_NOTE =
-  'Orchestrator implementation lands in Phase 2. ' +
-  'It must call the governance plane via MCP — never write directly.';
+export {
+  ALLOWED_TOOLS,
+  HttpMcpClient,
+  McpError,
+  ToolRejectedError,
+  type AllowedTool,
+  type GatedBegin,
+  type GatedChallenge,
+  type McpClient,
+  type McpClientOptions,
+} from './mcp-client.js';
+export {
+  InvalidTransitionError,
+  RunStore,
+  RUN_STATES,
+  assertTransition,
+  type BuildRun,
+  type PendingRegistration,
+  type RunState,
+} from './run.js';
+export { Orchestrator, type RegistrationRequest, type SpecSummary } from './orchestrator.js';
