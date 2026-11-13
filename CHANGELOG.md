@@ -8,6 +8,20 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Blueprint executor closes the compile loop (ADR 0010 §7):
+  `runtime/compilation` gains `executeBlueprint` — runs the prompt plan in
+  order through an injected `BlueprintCompleter` seam (structurally
+  satisfied by the model-router; compilation itself never touches the
+  network). `dam.manifest.yaml` is never LLM-generated (deterministic
+  `generateManifest` by construction); the C3 `(review)` item returns
+  consistency notes instead of a file. The orchestrator welds it in:
+  `compile(runId, completer)` stores the build run-locally and enters
+  `verifying` (completer failures, including budget breakers, fail the run
+  with zero governance-plane writes), and `requestRegistration` verifies
+  the stored build when no explicit `request.build` is passed. 6
+  compilation + 13 orchestrator vitest cases, including the end-to-end
+  plan → compile → verify → gated-register loop.
+
 - `runtime/model-router` OpenSquilla adapter (ADR 0010 §1/§6): the sole LLM
   egress of the Builder Runtime. Tier routing maps OpenSquilla C0–C3 to
   concrete models behind an injectable `ModelTransport` seam

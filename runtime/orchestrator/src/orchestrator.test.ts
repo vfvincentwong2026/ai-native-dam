@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateManifest, type Blueprint } from '@ai-native-dam/runtime-compilation';
+import { generateManifest, type Blueprint, type BlueprintCompleter } from '@ai-native-dam/runtime-compilation';
 import {
   HttpMcpClient,
   InvalidTransitionError,
@@ -284,5 +284,52 @@ describe('Orchestrator', () => {
     expect(failed?.state).toBe('failed');
     expect(failed?.error).toContain('invalid_status_transition');
     expect(failed?.pendingConfirmation).toBeNull();
+  });
+
+  it('compiles in-process and registers from the stored build (full loop)', async () => {
+    const gw = fakeGateway(happyPathHandler([]));
+    const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
+    const orch = new Orchestrator(client);
+
+    const run = await orch.startRun('spec-1');
+    const completer: BlueprintCompleter = {
+      async complete(req) {
+        return { text: `// ${req.promptSummary}` };
+      },
+    };
+    const compiled = await orch.compile(run.id, completer);
+    expect(compiled.state).toBe('verifying');
+    expect(compiled.buildRef).toBe(`build://${run.id}`);
+    expect(orch.getBuild(run.id)?.blueprintRef).toBe(run.blueprintRef);
+    expect(orch.getBuild(run.id)?.review).toContain('Cross-module');
+
+    // no explicit build: the stored CompiledBuild feeds the verify gate
+    const awaiting = await orch.requestRegistration(run.id, { name: 'Order Admin', version: '0.1.0' });
+    expect(awaiting.state).toBe('awaiting_registration');
+    expect(orch.getVerifyReport(run.id)?.ok).toBe(true);
+
+    const done = await orch.confirmRegistration(run.id);
+    expect(done.state).toBe('registered');
+    expect(done.systemId).toBe('sys-1');
+  });
+
+  it('a failing completer fails the run with zero governance-plane writes', async () => {
+    const gw = fakeGateway(happyPathHandler([]));
+    const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
+    const orch = new Orchestrator(client);
+
+    const run = await orch.startRun('spec-1');
+    const failing: BlueprintCompleter = {
+      async complete() {
+        throw new Error('run x exceeded its model budget (maxCalls=2)');
+      },
+    };
+    await expect(orch.compile(run.id, failing)).rejects.toThrow(/budget/);
+
+    const failed = orch.runStore.get(run.id);
+    expect(failed?.state).toBe('failed');
+    expect(failed?.error).toContain('budget');
+    // only the spec read happened — no register attempt
+    expect(gw.calls.filter((c) => c.name !== 'search_specs')).toHaveLength(0);
   });
 });

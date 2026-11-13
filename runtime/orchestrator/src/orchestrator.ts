@@ -15,10 +15,14 @@
 import { randomUUID } from 'node:crypto';
 import type { SystemSpec } from '@ai-native-dam/shared-schema';
 import {
+  executeBlueprint,
   planBlueprint,
+  toBuildOutput,
   verifyBuild,
   type Blueprint,
+  type BlueprintCompleter,
   type BuildOutput,
+  type CompiledBuild,
   type VerifyReport,
 } from '@ai-native-dam/runtime-compilation';
 import { ToolRejectedError, type McpClient } from './mcp-client.js';
@@ -40,8 +44,12 @@ export interface SpecSummary {
 }
 
 export interface RegistrationRequest extends PendingRegistration {
-  /** The generated build to verify (file list + manifest contents). */
-  readonly build: BuildOutput;
+  /**
+   * The generated build to verify (file list + manifest contents).
+   * Optional when the run was compiled in-process via `compile()` — the
+   * stored CompiledBuild is verified instead.
+   */
+  readonly build?: BuildOutput;
 }
 
 interface SpecsPage {
@@ -75,6 +83,8 @@ export class Orchestrator {
   private readonly blueprints = new Map<string, Blueprint>();
   /** Run-local verify reports: run id → deterministic gate report. */
   private readonly verifyReports = new Map<string, VerifyReport>();
+  /** Run-local compiled builds: run id → generated code tree (in-memory). */
+  private readonly builds = new Map<string, CompiledBuild>();
 
   constructor(
     private readonly client: McpClient,
@@ -142,6 +152,37 @@ export class Orchestrator {
   }
 
   /**
+   * In-process compilation (ADR 0010 §7): execute the run's Blueprint prompt
+   * plan through the injected completer (in production: the model-router, so
+   * every call is recorded and budget-guarded), store the build run-locally,
+   * and enter `verifying`. Completer failures — including budget breakers —
+   * fail the run with zero governance-plane writes.
+   */
+  async compile(runId: string, completer: BlueprintCompleter): Promise<BuildRun> {
+    const run = this.mustGet(runId);
+    assertTransition(run, 'verifying'); // legal only from `compiling`
+    const blueprint = run.blueprintRef ? this.blueprints.get(run.blueprintRef) : undefined;
+    if (!blueprint) {
+      this.runs.advance(runId, 'failed', { error: 'no blueprint recorded for this run' });
+      throw new Error(`run ${runId} has no blueprint to compile`);
+    }
+    try {
+      const build = await executeBlueprint(blueprint, { runId, completer });
+      this.builds.set(runId, build);
+      return this.runs.advance(runId, 'verifying', { buildRef: `build://${runId}` });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.runs.advance(runId, 'failed', { error: `compilation failed: ${message}` });
+      throw err;
+    }
+  }
+
+  /** The compiled build for a run (undefined until `compile` completes). */
+  getBuild(runId: string): CompiledBuild | undefined {
+    return this.builds.get(runId);
+  }
+
+  /**
    * Verification gate + registration request (ADR 0010 §4).
    *
    * The deterministic build is verified against its Blueprint BEFORE the
@@ -162,8 +203,18 @@ export class Orchestrator {
       });
       throw new Error(`run ${runId} has no blueprint to verify against (state ${failedRun.state})`);
     }
+    // Resolve the build: explicit request payload wins; otherwise the build
+    // compiled in-process via `compile()` is verified.
+    const stored = this.builds.get(runId);
+    const build: BuildOutput | undefined = request.build ?? (stored ? toBuildOutput(stored) : undefined);
+    if (!build) {
+      this.runs.advance(runId, 'failed', {
+        error: 'no build to verify — call compile() first or pass request.build',
+      });
+      throw new Error(`run ${runId} has no build to verify`);
+    }
     // Verify-before-register: the deterministic gate decides, not the caller.
-    const report = verifyBuild(blueprint, request.build);
+    const report = verifyBuild(blueprint, build);
     if (!report.ok) {
       const failed = report.checks.filter((c) => !c.ok).map((c) => c.name);
       this.runs.advance(runId, 'failed', { error: `verification failed: ${failed.join(', ')}` });

@@ -17,3 +17,11 @@ export type {
 export { kebab, planBlueprint } from './plan.js';
 export { generateManifest, type ManifestOptions } from './manifest.js';
 export { verifyBuild, type BuildOutput, type VerifyCheck, type VerifyReport } from './verify.js';
+export {
+  executeBlueprint,
+  toBuildOutput,
+  type BlueprintCompleter,
+  type CompiledBuild,
+  type ExecuteOptions,
+  type GeneratedFile,
+} from './compile.js';
