@@ -46,7 +46,7 @@ code generation, or social connectors — it **governs** them.
 
 ## What It Governs
 
-The governance plane treats **five kinds of capability** as first-class, versioned, auditable assets:
+The governance plane treats **seven kinds of capability** as first-class, versioned, auditable assets:
 
 | Asset type | Examples | Governance primitive |
 |---|---|---|
@@ -55,8 +55,10 @@ The governance plane treats **five kinds of capability** as first-class, version
 | **Generated systems** | E-commerce admin, short-drama management, retail order systems — produced from conversation | Spec-first approval before code runs; provenance of skills/models used |
 | **Knowledge** | Layered entries: `raw` / `topic` / `manual` / `rule` / `qa` | Write-gated; source-traceable; layer-scoped retrieval |
 | **Distilled artifacts** | LoRA adapters, digital twins, second-brain memory artifacts | Distilled from real usage; approved and versioned before reuse |
+| **Deployment targets** | Cloud accounts, edge boxes, on-prem machines | Who may install what, where, and how many |
+| **Deployed instances** | Running units: version, health, rollback point | Install/upgrade/revoke approvals; health audit trail |
 
-All five share the **same governance semantics**: `Rights` · `Provenance` · `Approval` · `Audit`.
+All seven share the **same governance semantics**: `Rights` · `Provenance` · `Approval` · `Audit`.
 This is the line between an AI-native platform and a folder full of files.
 
 ---
@@ -95,6 +97,13 @@ flowchart TB
         DP["Distillation Pipeline<br/>pause-before-train"]
     end
 
+    subgraph Deploy["📦 Deployment Plane"]
+        TR["Target Registry<br/>cloud · edge · on-prem"]
+        PV["Provisioner<br/>select → validate → inject → launch → probe"]
+        OTA["OTA Controller<br/>rollout · canary · rollback"]
+        ERA["Edge Runtime Agent<br/>health · metrics · offline degrade"]
+    end
+
     subgraph Connectors["🔌 Data Connectors"]
         RF["RedFox / OneAPI<br/>Xiaohongshu · WeChat · X · IG · YouTube"]
     end
@@ -112,17 +121,24 @@ flowchart TB
     CP --> SS
     DP --> DT
     BR --> Govern
+    CP --> PV
+    TR --> PV
+    PV --> OTA
+    OTA --> ERA
+    ERA --> MCP_GW
+    Deploy --- Shared
     RF --> BR
     RF --> AB
 ```
 
-**Three planes, one contract:**
+**Four planes, one contract:**
 
 1. **Consumers** — humans and team agents use **MCP** (Streamable HTTP, JSON-RPC); customer agents use **A2A** for peer delegation via the Agent Card at `/.well-known/agent.json`[reference:0].
-2. **Governance Plane** — the source of truth. Five asset classes. **Nothing runs until it is governed here.**
+2. **Governance Plane** — the source of truth. Seven asset classes. **Nothing runs until it is governed here.**
 3. **Execution Plane** — generation and distillation. It reads from and writes back to the governance plane through the same MCP contract. **It never holds private state.**
+4. **Deployment Plane** — installs approved systems onto registered targets (cloud, edge, on-prem) and keeps every deployed instance observable, versioned, and revocable. **It governs deployment decisions; it delegates actual orchestration** (containers, rollouts) to existing tooling.
 
-**Boundary rule:** the execution plane **must not** invent its own approval or rights logic. It calls the governance plane's MCP tools. Governance is not optional.
+**Boundary rule:** the execution and deployment planes **must not** invent their own approval or rights logic. They call the governance plane's MCP tools. Governance is not optional. A deployed unit is a **governed MCP peer, not a black-box container**: it exposes health/metrics and receives lifecycle commands through the same contract (see [ADR 0009](./docs/adr/0009-installable-unit-contract.md)).
 
 Design decisions such as retrieval filtering, memory layering, and distillation gating are recorded as ADRs in [`docs/adr/`](./docs/adr/).
 
@@ -394,6 +410,7 @@ When the MCP gateway is ready, you can expose a **read-only** MCP endpoint direc
 | **3 · A2A Collaboration** *(planned)* | Peer agents | Agent Card live, customer agents can delegate generation |
 | **4 · Distillation** *(in progress)* | Capability compounding | `request_distillation` + `approve_distillation` decision gate live, `search_distillations`, LoRA adapter metadata registry; execution-plane training pending |
 | **5 · Meta-generation** *(planned)* | Systems that generate systems | Spec templates for “generate a DAM” as a first-class output |
+| **6 · Deployment Plane** *(docs accepted)* | Governed hosting | InstallableUnit contract (ADR 0009), Target/Instance registries, peer MCP; actuation delegated |
 
 Status: **Phase 0.** See [open issues](https://github.com/vfvincentwong2026/ai-native-dam/issues).
 
