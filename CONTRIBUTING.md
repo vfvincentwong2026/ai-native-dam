@@ -1,7 +1,8 @@
 # Contributing to AI-Native DAM
 
-Thanks for your interest. This project is in **Phase 0** — the governance plane
-is being bootstrapped. Contributions are welcome at every layer.
+Thanks for your interest. The governance plane (Phases 1–2) and the deployment
+registries (Phase 6 data layer) are live; see [`docs/roadmap.md`](./docs/roadmap.md)
+for current phase status. Contributions are welcome at every layer.
 
 ## Ways to contribute
 
@@ -22,6 +23,24 @@ is being bootstrapped. Contributions are welcome at every layer.
 
 Use conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`.
 Example: `feat(mcp): add search_skills tool contract`.
+
+## Multi-agent working rule (双会话协作约定)
+
+This repo is actively developed by **parallel AI-agent sessions** (governance
+plane and Builder Runtime). To keep the shared working tree safe:
+
+1. **Package boundary.** The runtime session owns `runtime/`; the governance
+   session owns `packages/`. Cross-boundary changes (e.g. a contract in
+   `shared-schema` that the runtime needs) are announced before editing.
+2. **Never commit the other session's uncommitted work-in-progress.** Before
+   `git add -A`, check `git status` for files outside your scope; if found,
+   pause and coordinate instead of sweeping them into your commit.
+3. **Green before push.** `pnpm build && pnpm test` must pass on the whole
+   workspace before every push — your push gates both sessions' work.
+4. **Coordinate on `shared-schema`.** Contract changes affect both planes;
+   land them in small, separate commits so the other side can rebase quickly.
+5. **Comments in SQL DDL strings must not contain semicolons** — the
+   PGlite init splitter cuts statements on `;` (learned the hard way).
 
 ## Code of Conduct
 
