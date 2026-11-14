@@ -1,5 +1,9 @@
 import type {
   Asset,
+  DeployedInstance,
+  DeployedInstanceStatus,
+  DeploymentTarget,
+  DeploymentTargetKind,
   DistillationRequest,
   DistillationStatus,
   GeneratedSystem,
@@ -62,6 +66,14 @@ export interface GovernanceStore {
   getSystem(id: string): Promise<GeneratedSystem | undefined>;
   putSystem(system: GeneratedSystem): Promise<void>;
   listSystems(status?: GeneratedSystemStatus): Promise<GeneratedSystem[]>;
+
+  getTarget(id: string): Promise<DeploymentTarget | undefined>;
+  putTarget(target: DeploymentTarget): Promise<void>;
+  listTargets(kind?: DeploymentTargetKind): Promise<DeploymentTarget[]>;
+
+  getInstance(id: string): Promise<DeployedInstance | undefined>;
+  putInstance(instance: DeployedInstance): Promise<void>;
+  listInstances(status?: DeployedInstanceStatus): Promise<DeployedInstance[]>;
 
   close?(): Promise<void>;
 }
@@ -175,5 +187,31 @@ export class MemoryGovernanceStore implements GovernanceStore {
   async listSystems(status?: GeneratedSystemStatus): Promise<GeneratedSystem[]> {
     const all = [...this.state.systems.values()];
     return status ? all.filter(s => s.status === status) : all;
+  }
+
+  async getTarget(id: string): Promise<DeploymentTarget | undefined> {
+    return this.state.targets.get(id);
+  }
+
+  async putTarget(target: DeploymentTarget): Promise<void> {
+    this.state.targets.set(target.id, target);
+  }
+
+  async listTargets(kind?: DeploymentTargetKind): Promise<DeploymentTarget[]> {
+    const all = [...this.state.targets.values()];
+    return kind ? all.filter(t => t.kind === kind) : all;
+  }
+
+  async getInstance(id: string): Promise<DeployedInstance | undefined> {
+    return this.state.instances.get(id);
+  }
+
+  async putInstance(instance: DeployedInstance): Promise<void> {
+    this.state.instances.set(instance.id, instance);
+  }
+
+  async listInstances(status?: DeployedInstanceStatus): Promise<DeployedInstance[]> {
+    const all = [...this.state.instances.values()];
+    return status ? all.filter(i => i.status === status) : all;
   }
 }

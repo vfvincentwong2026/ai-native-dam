@@ -24,7 +24,14 @@ import {
   SearchLorasInput,
   RegisterGeneratedSystemInput,
   SearchSystemsInput,
+  RegisterDeploymentTargetInput,
+  RegisterDeployedInstanceInput,
+  RecordInstanceHealthInput,
+  RevokeInstanceInput,
+  SearchDeploymentsInput,
   type Asset,
+  type DeployedInstance,
+  type DeploymentTarget,
   type DistillationRequest,
   type GeneratedSystem,
   type KnowledgeEntry,
@@ -707,6 +714,8 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         name: { type: 'string', minLength: 1 },
         version: { type: 'string', minLength: 1, description: 'System version, e.g. 0.1.0' },
         endpoint_uri: { type: 'string', format: 'uri', description: 'Optional URL where the system is reachable' },
+        blueprint_hash: { type: 'string', description: 'Content hash of the Blueprint the system was compiled from (ADR 0010)' },
+        verify_report_ref: { type: 'string', description: 'Run-local reference of the verify-before-register report, e.g. verify://<runId>' },
       },
       required: ['source_spec_id', 'name', 'version'],
     },
@@ -731,6 +740,8 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         status: 'registered',
         sourceSkillIds: spec.sourceSkillIds,
         sourceKnowledgeIds: spec.sourceKnowledgeIds,
+        blueprintHash: args.blueprintHash ?? null,
+        verifyReportRef: args.verifyReportRef ?? null,
         registeredBy: ctx.principal.id,
         createdAt: new Date().toISOString(),
       };
@@ -764,6 +775,205 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
         systems = systems.filter(s => s.name.toLowerCase().includes(q));
       }
       return { systems: systems.slice(0, args.limit) };
+    },
+  },
+  {
+    name: 'register_deployment_target',
+    description:
+      'Register a deployment target (cloud, edge box, on-prem machine) into the governed ' +
+      'registry. High risk, always gated. Registration only — declares where systems may be ' +
+      'installed; does not provision or configure the target.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', minLength: 1 },
+        kind: { type: 'string', enum: ['cloud', 'edge', 'onprem'] },
+        endpoint_uri: { type: 'string', format: 'uri' },
+        region: { type: 'string' },
+        capacity_notes: { type: 'string', description: 'Free-text capacity, e.g. "4 vCPU / 16GB / no GPU"' },
+      },
+      required: ['name', 'kind'],
+    },
+    schema: RegisterDeploymentTargetInput,
+    handler: async (args: z.infer<typeof RegisterDeploymentTargetInput>, ctx: ToolContext) => {
+      const target: DeploymentTarget = {
+        id: `tgt-${randomUUID()}`,
+        name: args.name,
+        kind: args.kind,
+        endpointUri: args.endpointUri ?? null,
+        region: args.region ?? null,
+        capacityNotes: args.capacityNotes ?? null,
+        status: 'active',
+        registeredBy: ctx.principal.id,
+        createdAt: new Date().toISOString(),
+      };
+      await ctx.store.putTarget(target);
+      return { target };
+    },
+  },
+  {
+    name: 'register_deployed_instance',
+    description:
+      'Record that a registered generated system was installed onto an active target. ' +
+      'High risk, always gated. Creates the governed instance with version and deployer ' +
+      'provenance; does not itself start or configure anything — actuation is delegated. ' +
+      'One live instance per system×target; revoke before reinstalling.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        system_id: { type: 'string', minLength: 1 },
+        target_id: { type: 'string', minLength: 1 },
+      },
+      required: ['system_id', 'target_id'],
+    },
+    schema: RegisterDeployedInstanceInput,
+    handler: async (args: z.infer<typeof RegisterDeployedInstanceInput>, ctx: ToolContext) => {
+      const system = await ctx.store.getSystem(args.systemId);
+      if (!system) {
+        throw new ToolRejection('system_not_found', `Generated system ${args.systemId} is not registered`);
+      }
+      if (system.status === 'deprecated') {
+        throw new ToolRejection('system_deprecated', `Generated system ${args.systemId} is deprecated`);
+      }
+      const target = await ctx.store.getTarget(args.targetId);
+      if (!target) {
+        throw new ToolRejection('target_not_found', `Deployment target ${args.targetId} is not registered`);
+      }
+      if (target.status !== 'active') {
+        throw new ToolRejection('target_not_active', `Deployment target ${args.targetId} has status ${target.status}`);
+      }
+      const live = (await ctx.store.listInstances())
+        .filter(i => i.systemId === args.systemId && i.targetId === args.targetId && i.status !== 'revoked');
+      if (live.length > 0) {
+        throw new ToolRejection(
+          'instance_already_live',
+          `System ${args.systemId} already has a live instance on target ${args.targetId} (${live[0].id}, ${live[0].status}); revoke it first`,
+        );
+      }
+      const instance: DeployedInstance = {
+        id: `inst-${randomUUID()}`,
+        systemId: system.id,
+        targetId: target.id,
+        version: system.version,
+        status: 'deployed',
+        lastHealthAt: null,
+        healthMetrics: {},
+        deployedBy: ctx.principal.id,
+        createdAt: new Date().toISOString(),
+        revokedAt: null,
+        revokedBy: null,
+        revokeReason: null,
+      };
+      await ctx.store.putInstance(instance);
+      return { instance };
+    },
+  },
+  {
+    name: 'record_instance_health',
+    description:
+      'Record a health heartbeat for a deployed instance (healthy/degraded/offline plus ' +
+      'optional numeric metrics), as reported by the unit over its peer MCP channel. ' +
+      'Gated write; updates status and lastHealthAt. Does not trigger remediation or rollback.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        instance_id: { type: 'string', minLength: 1 },
+        status: { type: 'string', enum: ['healthy', 'degraded', 'offline'] },
+        metrics: { type: 'object', additionalProperties: { type: 'number' }, default: {} },
+      },
+      required: ['instance_id', 'status'],
+    },
+    schema: RecordInstanceHealthInput,
+    handler: async (args: z.infer<typeof RecordInstanceHealthInput>, ctx: ToolContext) => {
+      const instance = await ctx.store.getInstance(args.instanceId);
+      if (!instance) {
+        throw new ToolRejection('instance_not_found', `Deployed instance ${args.instanceId} does not exist`);
+      }
+      if (instance.status === 'revoked') {
+        throw new ToolRejection('instance_revoked', `Deployed instance ${args.instanceId} is revoked`);
+      }
+      const updated: DeployedInstance = {
+        ...instance,
+        status: args.status === 'healthy' ? 'deployed' : args.status,
+        lastHealthAt: new Date().toISOString(),
+        healthMetrics: args.metrics,
+      };
+      await ctx.store.putInstance(updated);
+      return { instance: updated };
+    },
+  },
+  {
+    name: 'revoke_instance',
+    description:
+      'Revoke a deployed instance (compromise, policy breach, decommission). High risk, ' +
+      'always gated, never auto-approved. Marks the instance revoked with reason and revoker ' +
+      'provenance; the revoke order itself reaches the unit over its peer MCP channel.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        instance_id: { type: 'string', minLength: 1 },
+        reason: { type: 'string', minLength: 1 },
+      },
+      required: ['instance_id', 'reason'],
+    },
+    schema: RevokeInstanceInput,
+    handler: async (args: z.infer<typeof RevokeInstanceInput>, ctx: ToolContext) => {
+      const instance = await ctx.store.getInstance(args.instanceId);
+      if (!instance) {
+        throw new ToolRejection('instance_not_found', `Deployed instance ${args.instanceId} does not exist`);
+      }
+      if (instance.status === 'revoked') {
+        throw new ToolRejection('invalid_status_transition', `Deployed instance ${args.instanceId} is already revoked`);
+      }
+      const revoked: DeployedInstance = {
+        ...instance,
+        status: 'revoked',
+        revokedAt: new Date().toISOString(),
+        revokedBy: ctx.principal.id,
+        revokeReason: args.reason,
+      };
+      await ctx.store.putInstance(revoked);
+      return { instance: revoked };
+    },
+  },
+  {
+    name: 'search_deployments',
+    description:
+      'List deployment targets and deployed instances, filterable by target kind, instance ' +
+      'status, system, or target. Read-only; returns registry metadata, never target internals.',
+    riskLevel: 'low',
+    gated: false,
+    scopes: ['Suggest', 'Read', 'Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['cloud', 'edge', 'onprem'] },
+        status: { type: 'string', enum: ['deployed', 'degraded', 'offline', 'revoked'] },
+        system_id: { type: 'string' },
+        target_id: { type: 'string' },
+        limit: { type: 'integer', default: 20, maximum: 50 },
+      },
+    },
+    schema: SearchDeploymentsInput,
+    handler: async (args: z.infer<typeof SearchDeploymentsInput>, ctx: ToolContext) => {
+      let targets = await ctx.store.listTargets(args.kind);
+      if (args.targetId) targets = targets.filter(t => t.id === args.targetId);
+      let instances = await ctx.store.listInstances(args.status);
+      if (args.systemId) instances = instances.filter(i => i.systemId === args.systemId);
+      if (args.targetId) instances = instances.filter(i => i.targetId === args.targetId);
+      return { targets: targets.slice(0, args.limit), instances: instances.slice(0, args.limit) };
     },
   },
   {

@@ -178,6 +178,18 @@ Returns `allowed: false` with a `replacement_id` when rights block the use.
 
 ---
 
+## Deployment
+
+| Tool | Risk | Gated | Status |
+|---|---|---|---|
+| `register_deployment_target` | high | ✅ | implemented (gateway, Phase 6) |
+| `register_deployed_instance` | high | ✅ | implemented (gateway, Phase 6) |
+| `record_instance_health` | medium | ✅ | implemented (gateway, Phase 6) |
+| `revoke_instance` | high | ✅ | implemented (gateway, Phase 6) |
+| `search_deployments` | low | — | implemented (gateway, Phase 6) |
+
+---
+
 ## Implementation Status (Phase 1)
 
 Implemented in `packages/mcp-gateway` over Streamable HTTP, in-memory state:

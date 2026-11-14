@@ -505,6 +505,8 @@ describe('register_generated_system / search_systems', () => {
     const out = await gated('register_generated_system', {
       source_spec_id: spec.id, name: 'Registry Target Console', version: '0.1.0',
       endpoint_uri: 'https://systems.example.com/registry-target',
+      blueprint_hash: 'a'.repeat(64),
+      verify_report_ref: 'verify://run-123',
     });
     expect(out.system.id).toMatch(/^sys-/);
     expect(out.system.status).toBe('registered');
@@ -512,6 +514,9 @@ describe('register_generated_system / search_systems', () => {
     expect(out.system.source_spec_id).toBe(spec.id);
     expect(out.system.source_skill_ids).toEqual(['content:approved-src']);
     expect(out.system.endpoint_uri).toBe('https://systems.example.com/registry-target');
+    // Builder Runtime provenance closes the System → Run → Blueprint → Spec chain (ADR 0010)
+    expect(out.system.blueprint_hash).toBe('a'.repeat(64));
+    expect(out.system.verify_report_ref).toBe('verify://run-123');
     expect(out.spec.status).toBe('generated');
 
     // registering the same (now generated) spec again is rejected
@@ -520,6 +525,15 @@ describe('register_generated_system / search_systems', () => {
     });
     expect(again.rejected).toBe(true);
     expect(again.reason).toBe('invalid_status_transition');
+  });
+
+  it('runtime provenance defaults to null for pre-runtime registrations', async () => {
+    const spec = await approvedSpec('Legacy Console');
+    const out = await gated('register_generated_system', {
+      source_spec_id: spec.id, name: 'Legacy Console', version: '0.1.0',
+    });
+    expect(out.system.blueprint_hash).toBeNull();
+    expect(out.system.verify_report_ref).toBeNull();
   });
 
   it('rejects drafts and missing specs', async () => {
@@ -551,6 +565,101 @@ describe('register_generated_system / search_systems', () => {
 
     const miss = unwrapToolJson({ body: (await callTool('search_systems', { query: 'no-such-system-xyz' }, 'read-token')).body });
     expect(miss.systems).toHaveLength(0);
+  });
+});
+
+describe('deployment registry', () => {
+  async function gated(name: string, args: Record<string, unknown>) {
+    const first = unwrapToolJson({ body: (await callTool(name, args)).body });
+    expect(first.approval_required).toBe(true);
+    return unwrapToolJson({ body: (await callTool(name, { ...args, _confirmation: first.confirmation_token })).body });
+  }
+
+  async function approvedSystem(name: string) {
+    const drafted = await gated('generate_system_spec', {
+      title: name, business_domain: 'deploy-qa', requirements: `${name} requirements.`,
+    });
+    await gated('submit_system_spec', { spec_id: drafted.spec_id });
+    const reg = await gated('register_generated_system', { source_spec_id: drafted.spec_id, name, version: '1.0.0' });
+    return reg.system;
+  }
+
+  it('registers a target and an instance with provenance; duplicate live install rejected', async () => {
+    const t = await gated('register_deployment_target', {
+      name: 'Cloud HK-1', kind: 'cloud', region: 'ap-southeast-1', capacity_notes: '4 vCPU / 16GB',
+    });
+    expect(t.target.id).toMatch(/^tgt-/);
+    expect(t.target.status).toBe('active');
+    expect(t.target.registered_by).toBe('editor');
+
+    const sys = await approvedSystem('Deployable Console');
+    const inst = await gated('register_deployed_instance', { system_id: sys.id, target_id: t.target.id });
+    expect(inst.instance.id).toMatch(/^inst-/);
+    expect(inst.instance.status).toBe('deployed');
+    expect(inst.instance.version).toBe('1.0.0');
+    expect(inst.instance.deployed_by).toBe('editor');
+
+    const dup = await gated('register_deployed_instance', { system_id: sys.id, target_id: t.target.id });
+    expect(dup.rejected).toBe(true);
+    expect(dup.reason).toBe('instance_already_live');
+
+    const ghostSys = await gated('register_deployed_instance', { system_id: 'sys-ghost', target_id: t.target.id });
+    expect(ghostSys.rejected).toBe(true);
+    expect(ghostSys.reason).toBe('system_not_found');
+
+    const ghostTgt = await gated('register_deployed_instance', { system_id: sys.id, target_id: 'tgt-ghost' });
+    expect(ghostTgt.rejected).toBe(true);
+    expect(ghostTgt.reason).toBe('target_not_found');
+  });
+
+  it('health heartbeats move status; revoke closes the instance and reopens the slot', async () => {
+    const t = await gated('register_deployment_target', { name: 'Edge Box 7', kind: 'edge' });
+    const sys = await approvedSystem('Edge Console');
+    const inst = await gated('register_deployed_instance', { system_id: sys.id, target_id: t.target.id });
+
+    const degraded = await gated('record_instance_health', {
+      instance_id: inst.instance.id, status: 'degraded', metrics: { cpu: 0.91 },
+    });
+    expect(degraded.instance.status).toBe('degraded');
+    expect(degraded.instance.last_health_at).toBeTruthy();
+    expect(degraded.instance.health_metrics.cpu).toBe(0.91);
+
+    const healthy = await gated('record_instance_health', { instance_id: inst.instance.id, status: 'healthy' });
+    expect(healthy.instance.status).toBe('deployed');
+
+    const ghost = await gated('record_instance_health', { instance_id: 'inst-ghost', status: 'healthy' });
+    expect(ghost.rejected).toBe(true);
+    expect(ghost.reason).toBe('instance_not_found');
+
+    const revoked = await gated('revoke_instance', { instance_id: inst.instance.id, reason: 'smoke: decommission' });
+    expect(revoked.instance.status).toBe('revoked');
+    expect(revoked.instance.revoked_by).toBe('editor');
+    expect(revoked.instance.revoke_reason).toBe('smoke: decommission');
+
+    const afterRevoke = await gated('record_instance_health', { instance_id: inst.instance.id, status: 'healthy' });
+    expect(afterRevoke.rejected).toBe(true);
+    expect(afterRevoke.reason).toBe('instance_revoked');
+
+    const again = await gated('revoke_instance', { instance_id: inst.instance.id, reason: 'twice' });
+    expect(again.rejected).toBe(true);
+    expect(again.reason).toBe('invalid_status_transition');
+
+    // slot reopened: same system × same target can be installed again
+    const reinstall = await gated('register_deployed_instance', { system_id: sys.id, target_id: t.target.id });
+    expect(reinstall.instance.status).toBe('deployed');
+  });
+
+  it('search_deployments filters by kind, status, system, target; read scope allowed', async () => {
+    const all = unwrapToolJson({ body: (await callTool('search_deployments', {}, 'read-token')).body });
+    expect(all.targets.some((t: { name: string }) => t.name === 'Cloud HK-1')).toBe(true);
+    expect(all.instances.some((i: { status: string }) => i.status === 'revoked')).toBe(true);
+
+    const edge = unwrapToolJson({ body: (await callTool('search_deployments', { kind: 'edge' }, 'read-token')).body });
+    expect(edge.targets.every((t: { kind: string }) => t.kind === 'edge')).toBe(true);
+
+    const revokedOnly = unwrapToolJson({ body: (await callTool('search_deployments', { status: 'revoked' }, 'read-token')).body });
+    expect(revokedOnly.instances.every((i: { status: string }) => i.status === 'revoked')).toBe(true);
+    expect(revokedOnly.instances.length).toBeGreaterThan(0);
   });
 });
 

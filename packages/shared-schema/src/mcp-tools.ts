@@ -54,6 +54,18 @@ import {
   SearchLorasInput,
   SearchLorasOutput,
 } from './distillation.js';
+import {
+  RegisterDeploymentTargetInput,
+  RegisterDeploymentTargetOutput,
+  RegisterDeployedInstanceInput,
+  RegisterDeployedInstanceOutput,
+  RecordInstanceHealthInput,
+  RecordInstanceHealthOutput,
+  RevokeInstanceInput,
+  RevokeInstanceOutput,
+  SearchDeploymentsInput,
+  SearchDeploymentsOutput,
+} from './deployment.js';
 import { RiskLevel } from './approval.js';
 
 export type McpScope = 'Suggest' | 'Read' | 'Edit';
@@ -223,7 +235,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     description:
       'Register a built system as a governed asset, linked to an approved System Spec. ' +
       'High risk, always gated. Records provenance from the spec (source skills/knowledge) and ' +
-      'transitions the spec to generated. Registration only — does not deploy or start the system.',
+      'transitions the spec to generated. Optionally carries Builder Runtime provenance ' +
+      '(blueprint_hash + verify_report_ref, ADR 0010) closing the System → Run → Blueprint → Spec chain. ' +
+      'Registration only — does not deploy or start the system.',
     riskLevel: 'high',
     gated: true,
     scopes: ['Edit'],
@@ -331,6 +345,65 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     scopes: ['Suggest', 'Read', 'Edit'],
     input: SearchLorasInput,
     output: SearchLorasOutput,
+  },
+  {
+    name: 'register_deployment_target',
+    description:
+      'Register a deployment target (cloud, edge box, on-prem machine) into the governed ' +
+      'registry. High risk, always gated. Registration only — declares where systems may be ' +
+      'installed; does not provision or configure the target.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    input: RegisterDeploymentTargetInput,
+    output: RegisterDeploymentTargetOutput,
+  },
+  {
+    name: 'register_deployed_instance',
+    description:
+      'Record that a registered generated system was installed onto an active target. ' +
+      'High risk, always gated. Creates the governed instance with version and deployer ' +
+      'provenance; does not itself start or configure anything — actuation is delegated.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    input: RegisterDeployedInstanceInput,
+    output: RegisterDeployedInstanceOutput,
+  },
+  {
+    name: 'record_instance_health',
+    description:
+      'Record a health heartbeat for a deployed instance (healthy/degraded/offline plus ' +
+      'optional numeric metrics), as reported by the unit over its peer MCP channel. ' +
+      'Gated write; updates status and lastHealthAt. Does not trigger remediation or rollback.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    input: RecordInstanceHealthInput,
+    output: RecordInstanceHealthOutput,
+  },
+  {
+    name: 'revoke_instance',
+    description:
+      'Revoke a deployed instance (compromise, policy breach, decommission). High risk, ' +
+      'always gated, never auto-approved. Marks the instance revoked with reason and revoker ' +
+      'provenance; the revoke order itself reaches the unit over its peer MCP channel.',
+    riskLevel: 'high',
+    gated: true,
+    scopes: ['Edit'],
+    input: RevokeInstanceInput,
+    output: RevokeInstanceOutput,
+  },
+  {
+    name: 'search_deployments',
+    description:
+      'List deployment targets and deployed instances, filterable by target kind, instance ' +
+      'status, system, or target. Read-only; returns registry metadata, never target internals.',
+    riskLevel: 'low',
+    gated: false,
+    scopes: ['Suggest', 'Read', 'Edit'],
+    input: SearchDeploymentsInput,
+    output: SearchDeploymentsOutput,
   },
 ];
 

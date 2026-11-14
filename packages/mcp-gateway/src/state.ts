@@ -1,5 +1,7 @@
 import type {
   Asset,
+  DeployedInstance,
+  DeploymentTarget,
   DistillationRequest,
   GeneratedSystem,
   KnowledgeEntry,
@@ -37,6 +39,10 @@ export interface GatewayState {
   loras: Map<string, LoraArtifact>;
   /** generated system id → registered system (provenance → spec) */
   systems: Map<string, GeneratedSystem>;
+  /** deployment target id → target (cloud / edge / on-prem) */
+  targets: Map<string, DeploymentTarget>;
+  /** deployed instance id → instance (system × target) */
+  instances: Map<string, DeployedInstance>;
 }
 
 export interface StateSeed {
@@ -50,6 +56,8 @@ export interface StateSeed {
   distillations?: DistillationRequest[];
   loras?: LoraArtifact[];
   systems?: GeneratedSystem[];
+  targets?: DeploymentTarget[];
+  instances?: DeployedInstance[];
 }
 
 export function createState(seed: StateSeed = {}): GatewayState {
@@ -64,6 +72,8 @@ export function createState(seed: StateSeed = {}): GatewayState {
     distillations: new Map(),
     loras: new Map(),
     systems: new Map(),
+    targets: new Map(),
+    instances: new Map(),
   };
   for (const asset of seed.assets ?? []) state.assets.set(asset.id, asset);
   for (const rights of seed.rights ?? []) state.rights.set(rights.assetId, rights);
@@ -75,5 +85,7 @@ export function createState(seed: StateSeed = {}): GatewayState {
   for (const d of seed.distillations ?? []) state.distillations.set(d.id, d);
   for (const l of seed.loras ?? []) state.loras.set(l.id, l);
   for (const s of seed.systems ?? []) state.systems.set(s.id, s);
+  for (const t of seed.targets ?? []) state.targets.set(t.id, t);
+  for (const i of seed.instances ?? []) state.instances.set(i.id, i);
   return state;
 }

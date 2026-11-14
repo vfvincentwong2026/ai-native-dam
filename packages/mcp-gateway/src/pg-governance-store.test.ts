@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Asset, DistillationRequest, GeneratedSystem, KnowledgeEntry, LoraArtifact, RightsRecord, SkillUsageRecord, SystemSpec, UsageRecord } from '@ai-native-dam/shared-schema';
+import type { Asset, DeployedInstance, DeploymentTarget, DistillationRequest, GeneratedSystem, KnowledgeEntry, LoraArtifact, RightsRecord, SkillUsageRecord, SystemSpec, UsageRecord } from '@ai-native-dam/shared-schema';
 import { openPgBackend } from './pg-backend.js';
 import { PgGovernanceStore } from './pg-governance-store.js';
 import { PgSkillStore } from './pg-skill-store.js';
@@ -111,8 +111,37 @@ const system: GeneratedSystem = {
   status: 'registered',
   sourceSkillIds: ['operations:project-context'],
   sourceKnowledgeIds: ['kn-0001'],
+  blueprintHash: 'b'.repeat(64),
+  verifyReportRef: 'verify://run-0001',
   registeredBy: 'editor',
   createdAt: '2026-01-07T00:00:00.000Z',
+};
+
+const target: DeploymentTarget = {
+  id: 'tgt-0001',
+  name: 'Cloud HK-1',
+  kind: 'cloud',
+  endpointUri: 'https://deploy.example.com/hk-1',
+  region: 'ap-southeast-1',
+  capacityNotes: '4 vCPU / 16GB',
+  status: 'active',
+  registeredBy: 'editor',
+  createdAt: '2026-01-08T00:00:00.000Z',
+};
+
+const instance: DeployedInstance = {
+  id: 'inst-0001',
+  systemId: 'sys-0001',
+  targetId: 'tgt-0001',
+  version: '0.1.0',
+  status: 'deployed',
+  lastHealthAt: '2026-01-09T00:00:00.000Z',
+  healthMetrics: { cpu: 0.3 },
+  deployedBy: 'editor',
+  createdAt: '2026-01-08T01:00:00.000Z',
+  revokedAt: null,
+  revokedBy: null,
+  revokeReason: null,
 };
 
 const dirs: string[] = [];
@@ -130,7 +159,7 @@ afterEach(async () => {
 });
 
 describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
-  it('round-trips all nine collections', async () => {
+  it('round-trips all eleven collections', async () => {
     const backend = await openPgBackend({ dataDir: await tempDir() });
     const store = await PgGovernanceStore.over(backend.db);
 
@@ -143,6 +172,8 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     await store.putDistillation(distillation);
     await store.putLora(lora);
     await store.putSystem(system);
+    await store.putTarget(target);
+    await store.putInstance(instance);
 
     expect(await store.getAsset(asset.id)).toEqual(asset);
     expect(await store.getRights(asset.id)).toEqual(rights);
@@ -158,6 +189,12 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     expect(await store.getSystem(system.id)).toEqual(system);
     expect(await store.listSystems('registered')).toEqual([system]);
     expect(await store.listSystems('active')).toEqual([]);
+    expect(await store.getTarget(target.id)).toEqual(target);
+    expect(await store.listTargets('cloud')).toEqual([target]);
+    expect(await store.listTargets('edge')).toEqual([]);
+    expect(await store.getInstance(instance.id)).toEqual(instance);
+    expect(await store.listInstances('deployed')).toEqual([instance]);
+    expect(await store.listInstances('revoked')).toEqual([]);
 
     const joined = await store.listAssetsWithRights();
     expect(joined).toHaveLength(1);
@@ -197,6 +234,8 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     await s1.putDistillation({ ...distillation, status: 'training', approvedAt: '2026-01-06T00:00:00.000Z', approvedBy: 'editor' });
     await s1.putLora(lora);
     await s1.putSystem(system);
+    await s1.putTarget(target);
+    await s1.putInstance({ ...instance, status: 'revoked', revokedAt: '2026-01-09T01:00:00.000Z', revokedBy: 'editor', revokeReason: 'decommission' });
     await first.close();
 
     const second = await openPgBackend({ dataDir: dir });
@@ -215,6 +254,11 @@ describe('PgGovernanceStore (embedded PGlite, shared backend)', () => {
     expect(sysReloaded?.status).toBe('registered');
     expect(sysReloaded?.sourceSpecId).toBe('spec-0001');
     expect(sysReloaded?.sourceSkillIds).toEqual(['operations:project-context']);
+    expect((await s2.getTarget(target.id))?.kind).toBe('cloud');
+    const instReloaded = await s2.getInstance(instance.id);
+    expect(instReloaded?.status).toBe('revoked');
+    expect(instReloaded?.revokedBy).toBe('editor');
+    expect(instReloaded?.healthMetrics).toEqual({ cpu: 0.3 });
     await second.close();
   });
 });

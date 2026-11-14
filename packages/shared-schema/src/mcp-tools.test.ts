@@ -25,6 +25,11 @@ const DOCUMENTED_TOOLS = [
   'search_loras',
   'register_generated_system',
   'search_systems',
+  'register_deployment_target',
+  'register_deployed_instance',
+  'record_instance_health',
+  'revoke_instance',
+  'search_deployments',
 ];
 
 describe('MCP_TOOLS registry', () => {

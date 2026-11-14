@@ -8,6 +8,22 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `register_generated_system` carries Builder Runtime provenance (ADR 0010
+  Open Question 1 resolved): optional `blueprint_hash` + `verify_report_ref`
+  close the System → Run → Blueprint → Spec traceability chain on the
+  governance plane. Schema, gateway handler, PG store
+  (`migrations/0008_system_runtime_provenance.sql`, nullable columns —
+  pre-runtime registrations stay null), and the orchestrator sends both
+  automatically on begin AND confirm (the gateway requires identical
+  arguments; the fields are recomputed deterministically).
+
+- Deployment Plane registries (ADR 0009): `DeploymentTarget`
+  (cloud/edge/on-prem) and `DeployedInstance` (system × target, with health
+  + revocation) become governed assets — `register_deployment_target`,
+  `register_deployed_instance`, `record_instance_health`, `revoke_instance`,
+  `search_deployments`; durable in both store backends
+  (`migrations/0007_deployment.sql`).
+
 - Skill usage recording in the compile path (ADR 0010 §5): `compile()` now
   leaves one `apply_skill` usage record per provenance skill of the spec
   BEFORE generating — latest approved version resolved via `search_skills`,

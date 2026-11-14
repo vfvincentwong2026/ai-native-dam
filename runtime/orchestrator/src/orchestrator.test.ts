@@ -322,6 +322,15 @@ describe('Orchestrator', () => {
     const done = await orch.confirmRegistration(run.id);
     expect(done.state).toBe('registered');
     expect(done.systemId).toBe('sys-1');
+
+    // both register calls carry the System → Run → Blueprint provenance,
+    // identical between begin and confirm (gateway requirement)
+    const regs = gw.calls.filter((c) => c.name === 'register_generated_system');
+    expect(regs).toHaveLength(2);
+    for (const reg of regs) {
+      expect(reg.arguments.blueprint_hash).toBe(orch.getBlueprint(run.id)?.hash);
+      expect(reg.arguments.verify_report_ref).toBe(`verify://${run.id}`);
+    }
   });
 
   it('a failing completer fails the run with zero governance-plane writes', async () => {

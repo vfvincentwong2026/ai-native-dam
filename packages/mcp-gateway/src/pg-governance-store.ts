@@ -1,5 +1,9 @@
 import type {
   Asset,
+  DeployedInstance,
+  DeployedInstanceStatus,
+  DeploymentTarget,
+  DeploymentTargetKind,
   DistillationRequest,
   DistillationStatus,
   GeneratedSystem,
@@ -114,8 +118,38 @@ CREATE TABLE IF NOT EXISTS generated_systems (
   status               text NOT NULL CHECK (status IN ('registered','active','deprecated')),
   source_skill_ids     text[] NOT NULL DEFAULT '{}',
   source_knowledge_ids text[] NOT NULL DEFAULT '{}',
+  blueprint_hash       text,
+  verify_report_ref    text,
   registered_by        text NOT NULL,
   created_at           timestamptz NOT NULL
+);
+-- ADR 0010 provenance columns (idempotent for databases created before 0008)
+ALTER TABLE generated_systems ADD COLUMN IF NOT EXISTS blueprint_hash text;
+ALTER TABLE generated_systems ADD COLUMN IF NOT EXISTS verify_report_ref text;
+CREATE TABLE IF NOT EXISTS deployment_targets (
+  id             text PRIMARY KEY,
+  name           text NOT NULL,
+  kind           text NOT NULL CHECK (kind IN ('cloud','edge','onprem')),
+  endpoint_uri   text,
+  region         text,
+  capacity_notes text,
+  status         text NOT NULL CHECK (status IN ('active','retired')),
+  registered_by  text NOT NULL,
+  created_at     timestamptz NOT NULL
+);
+CREATE TABLE IF NOT EXISTS deployed_instances (
+  id             text PRIMARY KEY,
+  system_id      text NOT NULL,
+  target_id      text NOT NULL,
+  version        text NOT NULL,
+  status         text NOT NULL CHECK (status IN ('deployed','degraded','offline','revoked')),
+  last_health_at timestamptz,
+  health_metrics jsonb NOT NULL DEFAULT '{}',
+  deployed_by    text NOT NULL,
+  created_at     timestamptz NOT NULL,
+  revoked_at     timestamptz,
+  revoked_by     text,
+  revoke_reason  text
 )`;
 
 /** pg and PGlite both return Date for timestamptz; normalize to ISO strings. */
@@ -243,8 +277,41 @@ function rowToSystem(r: any): GeneratedSystem {
     status: r.status,
     sourceSkillIds: r.source_skill_ids ?? [],
     sourceKnowledgeIds: r.source_knowledge_ids ?? [],
+    blueprintHash: r.blueprint_hash ?? null,
+    verifyReportRef: r.verify_report_ref ?? null,
     registeredBy: r.registered_by,
     createdAt: iso(r.created_at) as string,
+  };
+}
+
+function rowToTarget(r: any): DeploymentTarget {
+  return {
+    id: r.id,
+    name: r.name,
+    kind: r.kind,
+    endpointUri: r.endpoint_uri ?? null,
+    region: r.region ?? null,
+    capacityNotes: r.capacity_notes ?? null,
+    status: r.status,
+    registeredBy: r.registered_by,
+    createdAt: iso(r.created_at) as string,
+  };
+}
+
+function rowToInstance(r: any): DeployedInstance {
+  return {
+    id: r.id,
+    systemId: r.system_id,
+    targetId: r.target_id,
+    version: r.version,
+    status: r.status,
+    lastHealthAt: iso(r.last_health_at),
+    healthMetrics: r.health_metrics ?? {},
+    deployedBy: r.deployed_by,
+    createdAt: iso(r.created_at) as string,
+    revokedAt: iso(r.revoked_at),
+    revokedBy: r.revoked_by ?? null,
+    revokeReason: r.revoke_reason ?? null,
   };
 }
 
@@ -472,12 +539,14 @@ export class PgGovernanceStore implements GovernanceStore {
   async putSystem(system: GeneratedSystem): Promise<void> {
     await this.db.query(
       `INSERT INTO generated_systems (id, name, version, source_spec_id, endpoint_uri, status,
-                                      source_skill_ids, source_knowledge_ids, registered_by, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                                      source_skill_ids, source_knowledge_ids, blueprint_hash, verify_report_ref,
+                                      registered_by, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        ON CONFLICT (id) DO UPDATE SET
          status = EXCLUDED.status, endpoint_uri = EXCLUDED.endpoint_uri`,
       [system.id, system.name, system.version, system.sourceSpecId, system.endpointUri, system.status,
-       system.sourceSkillIds, system.sourceKnowledgeIds, system.registeredBy, system.createdAt],
+       system.sourceSkillIds, system.sourceKnowledgeIds, system.blueprintHash, system.verifyReportRef,
+       system.registeredBy, system.createdAt],
     );
   }
 
@@ -486,5 +555,55 @@ export class PgGovernanceStore implements GovernanceStore {
       ? await this.db.query('SELECT * FROM generated_systems WHERE status = $1 ORDER BY created_at, id', [status])
       : await this.db.query('SELECT * FROM generated_systems ORDER BY created_at, id');
     return rows.map(rowToSystem);
+  }
+
+  async getTarget(id: string): Promise<DeploymentTarget | undefined> {
+    const { rows } = await this.db.query('SELECT * FROM deployment_targets WHERE id = $1', [id]);
+    return rows[0] ? rowToTarget(rows[0]) : undefined;
+  }
+
+  async putTarget(target: DeploymentTarget): Promise<void> {
+    await this.db.query(
+      `INSERT INTO deployment_targets (id, name, kind, endpoint_uri, region, capacity_notes, status, registered_by, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT (id) DO UPDATE SET
+         status = EXCLUDED.status, capacity_notes = EXCLUDED.capacity_notes`,
+      [target.id, target.name, target.kind, target.endpointUri, target.region, target.capacityNotes,
+       target.status, target.registeredBy, target.createdAt],
+    );
+  }
+
+  async listTargets(kind?: DeploymentTargetKind): Promise<DeploymentTarget[]> {
+    const { rows } = kind
+      ? await this.db.query('SELECT * FROM deployment_targets WHERE kind = $1 ORDER BY created_at, id', [kind])
+      : await this.db.query('SELECT * FROM deployment_targets ORDER BY created_at, id');
+    return rows.map(rowToTarget);
+  }
+
+  async getInstance(id: string): Promise<DeployedInstance | undefined> {
+    const { rows } = await this.db.query('SELECT * FROM deployed_instances WHERE id = $1', [id]);
+    return rows[0] ? rowToInstance(rows[0]) : undefined;
+  }
+
+  async putInstance(instance: DeployedInstance): Promise<void> {
+    await this.db.query(
+      `INSERT INTO deployed_instances (id, system_id, target_id, version, status, last_health_at,
+                                       health_metrics, deployed_by, created_at, revoked_at, revoked_by, revoke_reason)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       ON CONFLICT (id) DO UPDATE SET
+         status = EXCLUDED.status, last_health_at = EXCLUDED.last_health_at,
+         health_metrics = EXCLUDED.health_metrics, revoked_at = EXCLUDED.revoked_at,
+         revoked_by = EXCLUDED.revoked_by, revoke_reason = EXCLUDED.revoke_reason`,
+      [instance.id, instance.systemId, instance.targetId, instance.version, instance.status,
+       instance.lastHealthAt, JSON.stringify(instance.healthMetrics), instance.deployedBy,
+       instance.createdAt, instance.revokedAt, instance.revokedBy, instance.revokeReason],
+    );
+  }
+
+  async listInstances(status?: DeployedInstanceStatus): Promise<DeployedInstance[]> {
+    const { rows } = status
+      ? await this.db.query('SELECT * FROM deployed_instances WHERE status = $1 ORDER BY created_at, id', [status])
+      : await this.db.query('SELECT * FROM deployed_instances ORDER BY created_at, id');
+    return rows.map(rowToInstance);
   }
 }

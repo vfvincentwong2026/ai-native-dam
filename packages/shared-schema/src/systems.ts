@@ -91,6 +91,13 @@ export const GeneratedSystem = z.object({
   /** Provenance denormalized from the source spec at registration time. */
   sourceSkillIds: z.array(z.string()).default([]),
   sourceKnowledgeIds: z.array(z.string()).default([]),
+  /**
+   * Builder Runtime provenance (ADR 0010 §2/§4): content hash of the
+   * Blueprint the system was compiled from, and the run-local reference of
+   * the verify-before-register report. Null for pre-runtime registrations.
+   */
+  blueprintHash: z.string().nullable().default(null),
+  verifyReportRef: z.string().nullable().default(null),
   registeredBy: z.string(),
   createdAt: z.string().datetime(),
 });
@@ -101,6 +108,10 @@ export const RegisterGeneratedSystemInput = z.object({
   name: z.string(),
   version: z.string(),
   endpointUri: z.string().url().optional(),
+  /** sha256 content hash of the Blueprint (ADR 0010 §2). */
+  blueprintHash: z.string().optional(),
+  /** Run-local reference of the verification report, e.g. verify://<runId>. */
+  verifyReportRef: z.string().optional(),
 });
 export type RegisterGeneratedSystemInput = z.infer<typeof RegisterGeneratedSystemInput>;
 

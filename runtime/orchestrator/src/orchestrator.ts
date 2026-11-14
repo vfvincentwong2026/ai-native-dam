@@ -312,6 +312,11 @@ export class Orchestrator {
       source_spec_id: run.specId,
       name: request.name,
       version: request.version,
+      // Close the System → Run → Blueprint → Spec chain on the governance
+      // plane (ADR 0010 §7): the content hash proves WHAT was planned, the
+      // report ref proves it passed the deterministic gate.
+      blueprint_hash: blueprint.hash,
+      verify_report_ref: verifyReportRef,
     };
     if (request.endpointUri) args.endpoint_uri = request.endpointUri;
 
@@ -349,6 +354,13 @@ export class Orchestrator {
       name: run.pendingRegistration.name,
       version: run.pendingRegistration.version,
     };
+    // The gateway requires the confirmation call to repeat the exact same
+    // arguments — recompute the provenance fields deterministically.
+    const blueprint = run.blueprintRef ? this.blueprints.get(run.blueprintRef) : undefined;
+    if (blueprint) {
+      args.blueprint_hash = blueprint.hash;
+      args.verify_report_ref = run.verifyReportRef ?? `verify://${runId}`;
+    }
     if (run.pendingRegistration.endpointUri) args.endpoint_uri = run.pendingRegistration.endpointUri;
 
     try {
