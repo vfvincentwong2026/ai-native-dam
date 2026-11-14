@@ -102,12 +102,20 @@ Run 是执行平面的本地实体，不是治理资产；但 run id 与验证�
 
 ## Open Questions（评审要点）
 
-1. `register_generated_system` 是否需要演进 schema 以携带 `blueprint_hash` /
-   `verify_report_ref`？（当前契约未含，需 shared-schema 小版本演进）
+1. ~~`register_generated_system` 是否需要演进 schema 以携带 `blueprint_hash` /
+   `verify_report_ref`？（当前契约未含，需 shared-schema 小版本演进）~~
+   **已解决（2026-11-15）**：契约已演进——可选 `blueprint_hash` +
+   `verify_report_ref` 入参，`generated_systems` 表加可空列
+   （`migrations/0008_system_runtime_provenance.sql`），orchestrator 在
+   begin/confirm 两次调用中确定性携带，四级回溯链在治理平面闭合。
 2. orchestrator 的 principal 形态：独立 token + 窄 scope？是否引入
    第四 scope（如 `Build`）与现有 Suggest/Read/Edit 并列？
-3. 验证沙箱形态：本地 `docker run` 一次性容器？devcontainer？还是先做
-   纯静态检查 + 构建，冒烟测试后置？
+3. ~~验证沙箱形态：本地 `docker run` 一次性容器？devcontainer？还是先做
+   纯静态检查 + 构建，冒烟测试后置？~~ **已解决（2026-11-15）**：采用一次性
+   docker 容器方案——`SandboxRunner` 接缝 + `DockerSandboxRunner`（每步一个
+   `docker run --rm` 挂载 run 工作区，install → build → smoke，首败短路，
+   命令可按 stack 覆盖）。orchestrator 在结构验证通过后运行，结果并入验证
+   报告（`sandbox_install/build/smoke`），失败即 fail run、网关零调用。
 4. Mangaba AI（README 既定 agent runtime）现在引入，还是先用最小
    ReAct loop 跑通、Phase 3 再替换？
 
