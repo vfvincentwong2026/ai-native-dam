@@ -150,7 +150,7 @@ export class PgSkillStore implements SkillStore {
     const { rows } = await this.db.query(
       `SELECT * FROM skill_registry
        WHERE ($1::text IS NULL OR domain = $1)
-         AND ($2::text IS NULL OR lower(name || ' ' || description) LIKE '%' || lower($2) || '%')
+         AND ($2::text IS NULL OR lower(id || ' ' || name || ' ' || description) LIKE '%' || lower($2) || '%')
          AND (NOT $3::boolean OR status = 'approved')
        ORDER BY id, version`,
       [filter.domain ?? null, filter.query ?? null, filter.onlyApproved ?? false],

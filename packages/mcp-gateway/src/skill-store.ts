@@ -17,7 +17,7 @@ export interface SkillStore {
   get(id: string, version: string): Promise<Skill | undefined>;
   /** Insert a new skill version. Callers must check `get` first. */
   put(skill: Skill): Promise<void>;
-  /** Registry search: exact domain, substring query, approval flag. */
+  /** Registry search: exact domain, substring query over id/name/description, approval flag. */
   search(filter: SkillSearchFilter): Promise<Skill[]>;
   /**
    * Transition draft/pending_approval → approved, stamping approver and time.
@@ -41,7 +41,7 @@ function matches(skill: Skill, filter: SkillSearchFilter): boolean {
   if (filter.onlyApproved && skill.status !== 'approved') return false;
   if (filter.query) {
     const q = filter.query.toLowerCase();
-    if (!`${skill.name} ${skill.description}`.toLowerCase().includes(q)) return false;
+    if (!`${skill.id} ${skill.name} ${skill.description}`.toLowerCase().includes(q)) return false;
   }
   return true;
 }

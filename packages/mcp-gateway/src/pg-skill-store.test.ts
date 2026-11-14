@@ -84,6 +84,13 @@ describe('PgSkillStore (embedded PGlite)', () => {
       'operations:test-skill',
     ]);
     expect((await store.search({ query: 'DESIGN' })).map(s => s.id)).toEqual(['content:ui-design']);
+    // The Builder Runtime resolves provenance skills by full id (ADR 0010 §5).
+    expect((await store.search({ query: 'operations:test-skill' })).map(s => s.id)).toEqual([
+      'operations:test-skill',
+    ]);
+    expect((await store.search({ query: 'content:ui-design' })).map(s => s.id)).toEqual([
+      'content:ui-design',
+    ]);
     expect(await store.search({ query: 'no-such-thing' })).toEqual([]);
     await store.close();
   });

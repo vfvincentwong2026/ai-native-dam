@@ -339,6 +339,13 @@ describe('register_skill', () => {
     expect(visible.skills).toHaveLength(1);
   });
 
+  it('search matches the full namespaced skill id (Builder Runtime provenance lookup)', async () => {
+    const found = unwrapToolJson({
+      body: (await callTool('search_skills', { query: 'drama:script-split', only_approved: false }, 'read-token')).body,
+    });
+    expect(found.skills.map((s: { id: string }) => s.id)).toEqual(['drama:script-split']);
+  });
+
   it('rejects re-registering the same id@version', async () => {
     const first = unwrapToolJson({ body: (await callTool('register_skill', skillArgs)).body });
     const second = await callTool('register_skill', { ...skillArgs, _confirmation: first.confirmation_token });

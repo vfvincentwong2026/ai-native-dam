@@ -350,7 +350,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
   },
   {
     name: 'search_skills',
-    description: 'Query the Skill Registry by domain and rights scope.',
+    description: 'Query the Skill Registry by domain and free-text (matches skill id, name, and description).',
     riskLevel: 'low',
     gated: false,
     scopes: ['Suggest', 'Read', 'Edit', 'Build'],

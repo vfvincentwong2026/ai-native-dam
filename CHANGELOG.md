@@ -6,6 +6,16 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `search_skills` now matches its free-text query against the skill **id**
+  as well as name/description, in both the memory and PGlite stores. The
+  Builder Runtime resolves spec provenance skills by full namespaced id
+  (`operations:project-context`), which never matched the old
+  name/description-only search — the first real end-to-end run failed at
+  the `apply_skill` provenance step. 3 new tests (id queries at the store
+  and wire level).
+
 ### Added
 
 - `Build` scope — the Builder Runtime's narrow principal (ADR 0010 Open
