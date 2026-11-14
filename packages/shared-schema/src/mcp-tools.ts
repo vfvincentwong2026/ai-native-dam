@@ -68,7 +68,7 @@ import {
 } from './deployment.js';
 import { RiskLevel } from './approval.js';
 
-export type McpScope = 'Suggest' | 'Read' | 'Edit';
+export type McpScope = 'Suggest' | 'Read' | 'Edit' | 'Build';
 
 export interface McpToolDefinition {
   name: string;
@@ -142,7 +142,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     description: 'Query Skill Registry by domain and rights scope.',
     riskLevel: 'low',
     gated: false,
-    scopes: ['Suggest', 'Read', 'Edit'],
+    scopes: ['Suggest', 'Read', 'Edit', 'Build'],
     input: SearchSkillsInput,
     output: SearchSkillsOutput,
   },
@@ -154,7 +154,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       'Pending/revoked/missing versions return applied=false with a reason and write no usage record.',
     riskLevel: 'medium',
     gated: true,
-    scopes: ['Edit'],
+    scopes: ['Edit', 'Build'],
     input: ApplySkillInput,
     output: ApplySkillOutput,
   },
@@ -226,7 +226,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       'drafts are visible to all scopes so reviewers can find work awaiting submit_system_spec.',
     riskLevel: 'low',
     gated: false,
-    scopes: ['Suggest', 'Read', 'Edit'],
+    scopes: ['Suggest', 'Read', 'Edit', 'Build'],
     input: SearchSpecsInput,
     output: SearchSpecsOutput,
   },
@@ -240,7 +240,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       'Registration only — does not deploy or start the system.',
     riskLevel: 'high',
     gated: true,
-    scopes: ['Edit'],
+    scopes: ['Edit', 'Build'],
     input: RegisterGeneratedSystemInput,
     output: RegisterGeneratedSystemOutput,
   },
@@ -260,7 +260,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     description: 'Query the knowledge base by layer.',
     riskLevel: 'low',
     gated: false,
-    scopes: ['Suggest', 'Read', 'Edit'],
+    scopes: ['Suggest', 'Read', 'Edit', 'Build'],
     input: SearchKnowledgeInput,
     output: SearchKnowledgeOutput,
   },

@@ -7,6 +7,7 @@ import type { Asset, RightsRecord } from '@ai-native-dam/shared-schema';
 const TOKENS: TokenMap = {
   'edit-token': { id: 'editor', scopes: ['Suggest', 'Read', 'Edit'] },
   'read-token': { id: 'viewer', scopes: ['Suggest', 'Read'] },
+  'build-token': { id: 'builder-runtime', scopes: ['Build'] },
 };
 
 const asset: Asset = {
@@ -121,6 +122,38 @@ describe('RBAC', () => {
   it('blocks an edit-only tool for a read principal even when called directly', async () => {
     const { body } = await callTool('record_usage', { asset_id: 'asset-0001', channel: 'xiaohongshu' }, 'read-token');
     expect(body.error.code).toBe(-32003);
+  });
+
+  it('Build scope (ADR 0010 Q2) sees exactly the Builder Runtime whitelist', async () => {
+    const { body } = await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, 'build-token');
+    const names = body.result.tools.map((t: { name: string }) => t.name);
+    expect(names.sort()).toEqual([
+      'apply_skill',
+      'register_generated_system',
+      'search_knowledge',
+      'search_skills',
+      'search_specs',
+    ]);
+  });
+
+  it('Build scope can call a whitelisted tool but nothing outside it', async () => {
+    // whitelisted read: allowed
+    const specs = await callTool('search_specs', {}, 'build-token');
+    expect(specs.body.error).toBeUndefined();
+
+    // gated whitelisted write: passes the scope check, lands on the approval gate
+    const applied = await callTool('apply_skill', {
+      skill_id: 'operations:project-context', version: '0.1.0',
+      target_system_id: 'spec-1', context: 'build-scope smoke',
+    }, 'build-token');
+    const appliedOut = unwrapToolJson({ body: applied.body });
+    expect(appliedOut.approval_required).toBe(true);
+
+    // outside the whitelist: forbidden, even though a Build principal is a writer
+    for (const tool of ['create_asset', 'write_knowledge', 'approve_skill', 'register_skill', 'submit_system_spec']) {
+      const { body } = await callTool(tool, {}, 'build-token');
+      expect(body.error?.code).toBe(-32003);
+    }
   });
 });
 

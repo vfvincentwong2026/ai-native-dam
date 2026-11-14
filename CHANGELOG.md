@@ -8,6 +8,14 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `Build` scope — the Builder Runtime's narrow principal (ADR 0010 Open
+  Question 2 resolved): a fourth scope alongside Suggest/Read/Edit. A
+  Build principal sees exactly the §5 whitelist (`search_specs`,
+  `search_skills`, `search_knowledge`, `apply_skill`,
+  `register_generated_system`) and nothing else; the gated two-call flow
+  is unchanged. `.env.example` shows the `DAM_TOKENS` layout with a
+  dedicated `builder-token`.
+
 - Executable verification sandbox (ADR 0010 §4 step 2, Open Question 3
   answered): `runtime/compilation` gains `materializeBuild` (write the
   compiled tree to a run-local workspace) and a `SandboxRunner` seam with

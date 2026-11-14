@@ -259,7 +259,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
     description: 'Query the knowledge base by layer.',
     riskLevel: 'low',
     gated: false,
-    scopes: ['Suggest', 'Read', 'Edit'],
+    scopes: ['Suggest', 'Read', 'Edit', 'Build'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -353,7 +353,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
     description: 'Query the Skill Registry by domain and rights scope.',
     riskLevel: 'low',
     gated: false,
-    scopes: ['Suggest', 'Read', 'Edit'],
+    scopes: ['Suggest', 'Read', 'Edit', 'Build'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -497,7 +497,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       'with applied=false. Does not modify the skill itself and does not approve new versions.',
     riskLevel: 'medium',
     gated: true,
-    scopes: ['Edit'],
+    scopes: ['Edit', 'Build'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -678,7 +678,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       'drafts are visible so reviewers can find work awaiting submit_system_spec.',
     riskLevel: 'low',
     gated: false,
-    scopes: ['Suggest', 'Read', 'Edit'],
+    scopes: ['Suggest', 'Read', 'Edit', 'Build'],
     inputSchema: {
       type: 'object',
       properties: {
@@ -706,7 +706,7 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       'expose the system; deployment goes through the Deployment Plane (ADR 0009).',
     riskLevel: 'high',
     gated: true,
-    scopes: ['Edit'],
+    scopes: ['Edit', 'Build'],
     inputSchema: {
       type: 'object',
       properties: {

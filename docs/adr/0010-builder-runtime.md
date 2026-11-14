@@ -108,8 +108,14 @@ Run 是执行平面的本地实体，不是治理资产；但 run id 与验证�
    `verify_report_ref` 入参，`generated_systems` 表加可空列
    （`migrations/0008_system_runtime_provenance.sql`），orchestrator 在
    begin/confirm 两次调用中确定性携带，四级回溯链在治理平面闭合。
-2. orchestrator 的 principal 形态：独立 token + 窄 scope？是否引入
-   第四 scope（如 `Build`）与现有 Suggest/Read/Edit 并列？
+2. ~~orchestrator 的 principal 形态：独立 token + 窄 scope？是否引入
+   第四 scope（如 `Build`）与现有 Suggest/Read/Edit 并列？~~
+   **已解决（2026-11-15）**：引入第四 scope `Build`，与 Suggest/Read/Edit
+   并列。持有 Build 的 principal 恰好且仅能访问 §5 白名单的五个工具
+   （search_specs / search_skills / search_knowledge / apply_skill /
+   register_generated_system）；门控语义不变——apply_skill 与
+   register_generated_system 仍需两段确认。部署形态：独立
+   `builder-token`（见 `.env.example` 的 DAM_TOKENS 示例）。
 3. ~~验证沙箱形态：本地 `docker run` 一次性容器？devcontainer？还是先做
    纯静态检查 + 构建，冒烟测试后置？~~ **已解决（2026-11-15）**：采用一次性
    docker 容器方案——`SandboxRunner` 接缝 + `DockerSandboxRunner`（每步一个
