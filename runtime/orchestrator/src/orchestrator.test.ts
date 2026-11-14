@@ -83,7 +83,8 @@ function happyPathHandler(calls: RecordedCall[]): Handler {
       if (!call.arguments._confirmation) {
         return { approval_required: true, confirmation_token: 'tok-skill', risk_level: 'medium' };
       }
-      return { usageId: 'su-1', applied: true };
+      // The real gateway translates results to snake_case on the wire.
+      return { usage_id: 'su-1', applied: true };
     }
     if (call.name === 'register_generated_system') {
       if (!call.arguments._confirmation) {

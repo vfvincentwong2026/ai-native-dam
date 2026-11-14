@@ -83,6 +83,8 @@ interface SkillsPage {
 
 interface ApplySkillResult {
   usageId?: string | null;
+  /** Wire spelling — the gateway translates results to snake_case. */
+  usage_id?: string | null;
   applied?: boolean;
   reason?: string;
 }
@@ -266,10 +268,12 @@ export class Orchestrator {
           ? begin.result
           : await this.client.confirmGated('apply_skill', args, begin.challenge.confirmationToken)
       ) as ApplySkillResult;
-      if (result.applied !== true || !result.usageId) {
+      // The wire is snake_case; accept both spellings (cf. wireToSpec).
+      const usageId = result.usageId ?? result.usage_id ?? null;
+      if (result.applied !== true || !usageId) {
         throw new Error(`skill ${skillId}@${version} rejected: ${result.reason ?? 'no usage record returned'}`);
       }
-      usages.push({ skillId, version, usageId: result.usageId });
+      usages.push({ skillId, version, usageId });
     }
     this.skillUsages.set(run.id, usages);
   }

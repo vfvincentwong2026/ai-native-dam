@@ -16,6 +16,13 @@ versioning follows [Semantic Versioning](https://semver.org/).
   the `apply_skill` provenance step. 3 new tests (id queries at the store
   and wire level).
 
+- The orchestrator now accepts the wire spelling `usage_id` (alongside
+  `usageId`) in `apply_skill` results. The gateway translates results to
+  snake_case at the boundary, so a real gateway run recorded the usage but
+  the orchestrator read a camelCase key and reported "no usage record
+  returned". The fake gateway in the tests now answers in the real wire
+  format so the seam stays covered.
+
 ### Added
 
 - `Build` scope — the Builder Runtime's narrow principal (ADR 0010 Open
