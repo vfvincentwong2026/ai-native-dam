@@ -337,6 +337,16 @@ The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each
 | `register_lora_adapter` | high | ✅ | Register a distilled adapter as a versioned asset |
 | `search_loras` | low | — | List registered LoRA adapters (metadata pointers, never the bytes) |
 
+### Deployment
+
+| Tool | Risk | Gated | Description |
+|---|---|---|---|
+| `register_deployment_target` | high | ✅ | Register a cloud/edge/on-prem target into the governed registry |
+| `register_deployed_instance` | high | ✅ | Record a system install onto a target (one live instance per system×target) |
+| `record_instance_health` | medium | ✅ | Peer-reported heartbeat: healthy/degraded/offline + metrics |
+| `revoke_instance` | high | ✅ | Revoke a deployed instance with reason and revoker provenance |
+| `search_deployments` | low | — | List targets and instances, filterable by kind/status/system/target |
+
 **Approval semantics.** `mcp-approval` asks a human via `elicitation` whenever the client supports it; when it cannot, it falls back to a **two-call confirmation token** — the first call returns a random string, the second must quote it back. The token proves the call was made twice with the same arguments; `elicitation` is what actually closes the loop, because the model cannot answer on the person's behalf[reference:6].
 
 ---

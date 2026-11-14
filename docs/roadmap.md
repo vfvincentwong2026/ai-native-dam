@@ -8,7 +8,7 @@
 | 3 · A2A Collaboration | Agent Card, task delegation, customer agents | planned |
 | 4 · Distillation | `request_distillation`, pause-before-train, LoRA registry | **in progress** (gateway decision gate live: request/approve/search + LoRA metadata registry, ADR 0003/0008; execution-plane training pending) |
 | 5 · Meta-generation | Spec templates for "generate a DAM" | planned |
-| 6 · Deployment Plane | Target/Instance registries, InstallableUnit contract, peer MCP | **docs accepted** (ADR 0009; data-layer tooling after Phase 2 closes, actuation after Phase 3) |
+| 6 · Deployment Plane | Target/Instance registries, InstallableUnit contract, peer MCP | **in progress** (data layer live: target/instance registration, health, revoke, search — ADR 0009; actuation after Phase 3) |
 
 ## Phase 0 — completion criteria
 
