@@ -25,3 +25,17 @@ export {
   type ExecuteOptions,
   type GeneratedFile,
 } from './compile.js';
+export {
+  DEFAULT_SANDBOX_COMMANDS,
+  DockerSandboxRunner,
+  materializeBuild,
+  systemSpawn,
+  type DockerSandboxOptions,
+  type SandboxCommands,
+  type SandboxResult,
+  type SandboxRunner,
+  type SandboxStep,
+  type SandboxStepName,
+  type SandboxVerifyOptions,
+  type SpawnImpl,
+} from './sandbox.js';

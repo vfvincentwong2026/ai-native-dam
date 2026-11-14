@@ -14,9 +14,11 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
 import type { SystemSpec } from '@ai-native-dam/shared-schema';
 import {
   executeBlueprint,
+  materializeBuild,
   planBlueprint,
   toBuildOutput,
   verifyBuild,
@@ -24,6 +26,8 @@ import {
   type BlueprintCompleter,
   type BuildOutput,
   type CompiledBuild,
+  type SandboxRunner,
+  type VerifyCheck,
   type VerifyReport,
 } from '@ai-native-dam/runtime-compilation';
 import { ToolRejectedError, type McpClient } from './mcp-client.js';
@@ -42,6 +46,19 @@ export interface SpecSummary {
   readonly id: string;
   readonly title: string;
   readonly businessDomain: string;
+}
+
+export interface OrchestratorOptions {
+  /**
+   * Executable verification sandbox (ADR 0010 §4 step 2). When set, runs
+   * that were compiled in-process additionally pass install/build/smoke in
+   * a throwaway container before registration is requested. Runs whose
+   * build arrived out of band (`completeCompilation` + explicit
+   * `request.build`) are verified structurally only.
+   */
+  readonly sandbox?: SandboxRunner;
+  /** Run-local workspace root for materialized builds; default `.dam-runs`. */
+  readonly sandboxWorkDir?: string;
 }
 
 export interface RegistrationRequest extends PendingRegistration {
@@ -120,6 +137,7 @@ export class Orchestrator {
   constructor(
     private readonly client: McpClient,
     private readonly runs: RunStore = new RunStore(),
+    private readonly options: OrchestratorOptions = {},
   ) {}
 
   get runStore(): RunStore {
@@ -299,7 +317,12 @@ export class Orchestrator {
       throw new Error(`run ${runId} has no build to verify`);
     }
     // Verify-before-register: the deterministic gate decides, not the caller.
-    const report = verifyBuild(blueprint, build);
+    let report = verifyBuild(blueprint, build);
+    // Executable verification (ADR 0010 §4 step 2): only for builds compiled
+    // in-process — we can only materialize what we hold in memory.
+    if (report.ok && this.options.sandbox && stored) {
+      report = await this.runSandbox(runId, stored, report);
+    }
     if (!report.ok) {
       const failed = report.checks.filter((c) => !c.ok).map((c) => c.name);
       this.runs.advance(runId, 'failed', { error: `verification failed: ${failed.join(', ')}` });
@@ -390,6 +413,31 @@ export class Orchestrator {
   /** Fail a run from any non-terminal state. */
   fail(runId: string, reason: string): BuildRun {
     return this.runs.advance(runId, 'failed', { error: reason });
+  }
+
+  /**
+   * Materialize the in-process build into the run workspace and run the
+   * sandbox steps; the step outcomes extend the structural report so the
+   * human reviewer sees one combined verdict.
+   */
+  private async runSandbox(
+    runId: string,
+    build: CompiledBuild,
+    structural: VerifyReport,
+  ): Promise<VerifyReport> {
+    const workDir = join(this.options.sandboxWorkDir ?? '.dam-runs', runId);
+    await materializeBuild(workDir, build);
+    const result = await this.options.sandbox!.verify(workDir, { runId });
+    const sandboxChecks: VerifyCheck[] = result.steps.map((s) => ({
+      name: `sandbox_${s.name}`,
+      ok: s.ok,
+      detail: s.ok ? `exit 0` : `exit ${s.exitCode ?? 'signal'}: ${s.logTail}`,
+    }));
+    return {
+      ...structural,
+      ok: structural.ok && result.ok,
+      checks: [...structural.checks, ...sandboxChecks],
+    };
   }
 
   private mustGet(runId: string): BuildRun {

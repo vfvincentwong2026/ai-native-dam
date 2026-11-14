@@ -29,6 +29,7 @@ export {
   Orchestrator,
   VerificationFailedError,
   type AppliedSkill,
+  type OrchestratorOptions,
   type RegistrationRequest,
   type SpecSummary,
 } from './orchestrator.js';

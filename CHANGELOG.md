@@ -8,6 +8,17 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Executable verification sandbox (ADR 0010 §4 step 2, Open Question 3
+  answered): `runtime/compilation` gains `materializeBuild` (write the
+  compiled tree to a run-local workspace) and a `SandboxRunner` seam with
+  `DockerSandboxRunner` (throwaway container per step, install → build →
+  smoke, first failure short-circuits, commands overridable per stack).
+  The orchestrator runs it in `requestRegistration` after the structural
+  gate passes — only for in-process compiled builds — and folds the step
+  outcomes into the stored verify report (`sandbox_install` /
+  `sandbox_build` / `sandbox_smoke`). A failing sandbox fails the run
+  before the gateway is touched.
+
 - `register_generated_system` carries Builder Runtime provenance (ADR 0010
   Open Question 1 resolved): optional `blueprint_hash` + `verify_report_ref`
   close the System → Run → Blueprint → Spec traceability chain on the

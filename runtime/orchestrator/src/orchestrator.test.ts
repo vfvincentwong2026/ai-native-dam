@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { generateManifest, type Blueprint, type BlueprintCompleter } from '@ai-native-dam/runtime-compilation';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { generateManifest, type Blueprint, type BlueprintCompleter, type SandboxRunner } from '@ai-native-dam/runtime-compilation';
 import {
   HttpMcpClient,
   InvalidTransitionError,
@@ -416,5 +419,84 @@ describe('Orchestrator', () => {
     expect(completerCalled).toBe(false);
     expect(gw.calls.filter((c) => c.name === 'apply_skill')).toHaveLength(0);
     expect(gw.calls.filter((c) => c.name === 'register_generated_system')).toHaveLength(0);
+  });
+
+  it('runs the executable sandbox after structural verification (in-process builds)', async () => {
+    const gw = fakeGateway(happyPathHandler([]));
+    const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
+    const workRoot = await mkdtemp(join(tmpdir(), 'dam-orch-sandbox-'));
+    const seen: { workDir: string; runId: string }[] = [];
+    const sandbox: SandboxRunner = {
+      async verify(workDir, opts) {
+        seen.push({ workDir, runId: opts.runId });
+        return {
+          ok: true,
+          steps: [
+            { name: 'install', ok: true, exitCode: 0, logTail: 'ok' },
+            { name: 'build', ok: true, exitCode: 0, logTail: 'ok' },
+            { name: 'smoke', ok: true, exitCode: 0, logTail: 'ok' },
+          ],
+        };
+      },
+    };
+    const orch = new Orchestrator(client, undefined, { sandbox, sandboxWorkDir: workRoot });
+
+    try {
+      const run = await orch.startRun('spec-1');
+      const completer: BlueprintCompleter = { async complete() { return { text: '// x' }; } };
+      await orch.compile(run.id, completer);
+      const awaiting = await orch.requestRegistration(run.id, { name: 'Order Admin', version: '0.1.0' });
+      expect(awaiting.state).toBe('awaiting_registration');
+
+      // sandbox ran on the materialized run workspace
+      expect(seen).toEqual([{ workDir: join(workRoot, run.id), runId: run.id }]);
+      // the stored report combines structural + sandbox checks
+      const report = orch.getVerifyReport(run.id);
+      expect(report?.ok).toBe(true);
+      expect(report?.checks.map((c) => c.name)).toContain('sandbox_smoke');
+    } finally {
+      await rm(workRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('a failing sandbox fails the run before the gateway is touched', async () => {
+    const gw = fakeGateway(happyPathHandler([]));
+    const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
+    const workRoot = await mkdtemp(join(tmpdir(), 'dam-orch-sandbox-'));
+    const sandbox: SandboxRunner = {
+      async verify() {
+        return {
+          ok: false,
+          steps: [
+            { name: 'install', ok: true, exitCode: 0, logTail: 'ok' },
+            { name: 'build', ok: false, exitCode: 2, logTail: 'tsc exploded' },
+          ],
+        };
+      },
+    };
+    const orch = new Orchestrator(client, undefined, { sandbox, sandboxWorkDir: workRoot });
+
+    try {
+      const run = await orch.startRun('spec-1');
+      const completer: BlueprintCompleter = { async complete() { return { text: '// x' }; } };
+      await orch.compile(run.id, completer);
+
+      try {
+        await orch.requestRegistration(run.id, { name: 'X', version: '0.0.1' });
+        expect.unreachable('sandbox failure must block registration');
+      } catch (err) {
+        expect(err).toBeInstanceOf(VerificationFailedError);
+        const checks = (err as VerificationFailedError).report.checks;
+        expect(checks.find((c) => c.name === 'sandbox_build')?.ok).toBe(false);
+        expect(checks.find((c) => c.name === 'sandbox_build')?.detail).toContain('tsc exploded');
+      }
+
+      const failed = orch.runStore.get(run.id);
+      expect(failed?.state).toBe('failed');
+      expect(failed?.error).toContain('sandbox_build');
+      expect(gw.calls.filter((c) => c.name === 'register_generated_system')).toHaveLength(0);
+    } finally {
+      await rm(workRoot, { recursive: true, force: true });
+    }
   });
 });
