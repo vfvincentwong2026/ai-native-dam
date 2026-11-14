@@ -140,6 +140,8 @@ flowchart TB
 
 **Boundary rule:** the execution and deployment planes **must not** invent their own approval or rights logic. They call the governance plane's MCP tools. Governance is not optional. A deployed unit is a **governed MCP peer, not a black-box container**: it exposes health/metrics and receives lifecycle commands through the same contract (see [ADR 0009](./docs/adr/0009-installable-unit-contract.md)).
 
+**Builder Runtime loop (implemented, [ADR 0010](./docs/adr/0010-builder-runtime.md)):** an approved spec is planned into a deterministic, content-hashed **Blueprint**; every provenance skill leaves an `apply_skill` usage record (feeding the distillation threshold); the prompt plan executes through the **model router** (C0–C3 tiered, per-run cost ledger, budget circuit-breaker); a **deterministic verify gate** checks the build against its Blueprint and InstallableUnit L1 manifest — a failed gate never reaches the gateway; only then is `register_generated_system` requested, carrying `blueprint_hash` + `verify_report_ref` so every registered system traces back **System → Run → Blueprint → Spec**. The human decision stays exactly where it always was: spec approval and registration confirmation.
+
 Design decisions such as retrieval filtering, memory layering, and distillation gating are recorded as ADRs in [`docs/adr/`](./docs/adr/).
 
 ---
@@ -269,10 +271,10 @@ ai-native-dam/
 │   ├── a2a-gateway/            # Agent Card, task delegation, result routing
 │   ├── connectors/             # RedFox / OneAPI adapters (Python, pluggable)
 │   └── shared-schema/          # Shared types, Zod schemas, MCP/A2A contracts
-├── runtime/                    # Builder Runtime (separate deployment unit)
-│   ├── orchestrator/           # Agent orchestration
-│   ├── model-router/           # OpenSquilla integration
-│   ├── compilation/            # Spec → Blueprint → System
+├── runtime/                    # Builder Runtime (separate deployment unit, ADR 0010)
+│   ├── orchestrator/           # Run state machine + whitelisted MCP client + human gate seam
+│   ├── model-router/           # OpenSquilla C0–C3 tiering, run-local cost ledger, budget breaker
+│   ├── compilation/            # Deterministic Spec → Blueprint planner, manifest generator, executor + verify gate
 │   └── distillation/           # tinker-ai-skill integration (gated)
 ├── infra/
 │   ├── migrations/             # channels, rights, skills, specs, lora_artifacts
@@ -323,9 +325,8 @@ The canonical contract lives in [`docs/mcp-tools.md`](./docs/mcp-tools.md). Each
 | `generate_system_spec` | medium | ✅ | Draft a System Spec from conversation + skills + knowledge |
 | `submit_system_spec` | high | ✅ | Submit for approval; generation runs **only after approval** |
 | `search_specs` | low | — | Query System Specs by status and title/domain substring |
-| `register_generated_system` | high | ✅ | Register the output as a governed asset with full provenance |
-| `search_systems` | low | — | Query registered systems by status and name substring |
-| `search_systems` | low | — | Query registered generated systems by status and name |
+| `register_generated_system` | high | ✅ | Register the output as a governed asset with full provenance (incl. `blueprint_hash` / `verify_report_ref` from the Builder Runtime) |
+| `search_systems` | low | — | Query registered generated systems by status and name substring |
 
 ### Distillation
 
@@ -417,14 +418,14 @@ When the MCP gateway is ready, you can expose a **read-only** MCP endpoint direc
 | Phase | Focus | Deliverables |
 |---|---|---|
 | **0 · Foundation** | Governance plane | Artbucket running, MCP endpoint verified, first 5 media tools, `docs/mcp-tools.md` |
-| **1 · Skills & Knowledge** | Capability registry | `search_skills`, `apply_skill`, layered knowledge base, write-gated |
-| **2 · Spec-first Generation** | Builder Runtime | Orchestration, `generate_system_spec`, approval gate, **one SOP → one approved Spec** |
+| **1 · Skills & Knowledge** *(implemented)* | Capability registry | `search_skills`, `apply_skill`, layered knowledge base, write-gated |
+| **2 · Spec-first Generation** *(implemented)* | Builder Runtime | Orchestrator state machine, deterministic Blueprint planner, model router with budget breaker, verify-before-register gate, `generate_system_spec` → `register_generated_system` with full provenance |
 | **3 · A2A Collaboration** *(planned)* | Peer agents | Agent Card live, customer agents can delegate generation |
 | **4 · Distillation** *(in progress)* | Capability compounding | `request_distillation` + `approve_distillation` decision gate live, `search_distillations`, LoRA adapter metadata registry; execution-plane training pending |
 | **5 · Meta-generation** *(planned)* | Systems that generate systems | Spec templates for “generate a DAM” as a first-class output |
-| **6 · Deployment Plane** *(docs accepted)* | Governed hosting | InstallableUnit contract (ADR 0009), Target/Instance registries, peer MCP; actuation delegated |
+| **6 · Deployment Plane** *(registries live)* | Governed hosting | InstallableUnit contract (ADR 0009), Target/Instance registries + health/revocation tools live; actuation delegated |
 
-Status: **Phase 0.** See [open issues](https://github.com/vfvincentwong2026/ai-native-dam/issues).
+Status: **Phases 1, 2, 4 (decision gate) and 6 (registries) implemented** in the in-repo gateway + Builder Runtime; all 144 tests green. See [open issues](https://github.com/vfvincentwong2026/ai-native-dam/issues).
 
 ---
 
