@@ -32,8 +32,9 @@ versioning follows [Semantic Versioning](https://semver.org/).
   registration, and asserts the registered system carries a non-empty
   `blueprint_hash` + `verify_report_ref`. No external services, no LLM
   (stub completer — the gate is structural). Idempotent; `DAM_PG_DATA_DIR`
-  selects the store. This is the script that caught the two wire-seam bugs
-  fixed in this release.
+  selects the store. Wired into CI as the `builder-smoke` job (scratch
+  store under `runner.temp`). This is the script that caught the two
+  wire-seam bugs fixed in this release.
 
 - `Build` scope — the Builder Runtime's narrow principal (ADR 0010 Open
   Question 2 resolved): a fourth scope alongside Suggest/Read/Edit. A
