@@ -8,6 +8,16 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `build-smoke` / `build-real` no longer double-open PGlite: both scripts now
+  probe the resident gateway at `DAM_GATEWAY_URL` (default
+  `http://127.0.0.1:8080`) and talk HTTP to it when it answers, using the
+  service token file's principals (the file now includes a Build-scope
+  `builder-runtime`); only when no gateway responds do they boot an
+  embedded gateway over `DAM_PG_DATA_DIR`. Shared chain plumbing extracted
+  to `scripts/lib/build-chain.mjs`. Two PGlite instances on one data
+  directory diverge silently — the resident gateway kept serving stale
+  state until restarted.
+
 - `search_skills` now matches its free-text query against the skill **id**
   as well as name/description, in both the memory and PGlite stores. The
   Builder Runtime resolves spec provenance skills by full namespaced id
