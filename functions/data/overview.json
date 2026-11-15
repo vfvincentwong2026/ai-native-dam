@@ -1,7 +1,7 @@
 {
   "server": "ai-native-dam-gateway",
   "version": "0.1.0",
-  "generated_at": "2026-11-15T17:23:54.532Z",
+  "generated_at": "2026-11-15T17:52:15.438Z",
   "skills": {
     "total": 24,
     "by_status": {
@@ -85,8 +85,8 @@
   "specs": {
     "total": 11,
     "by_status": {
-      "generated": 9,
-      "approved": 2
+      "generated": 10,
+      "approved": 1
     },
     "pending_approval": [],
     "recent": [
@@ -94,7 +94,7 @@
         "id": "spec-202154e1-07cb-49c4-95ff-2cd53bd40bb1",
         "title": "版权到期预警台",
         "business_domain": "operations",
-        "status": "approved",
+        "status": "generated",
         "created_at": "2026-11-15T17:21:29.654Z"
       },
       {
@@ -201,7 +201,7 @@
       {
         "id": "spec-202154e1-07cb-49c4-95ff-2cd53bd40bb1",
         "title": "版权到期预警台",
-        "status": "approved"
+        "status": "generated"
       }
     ]
   },
@@ -215,11 +215,22 @@
     "awaiting_approval": []
   },
   "systems": {
-    "total": 9,
+    "total": 10,
     "by_status": {
-      "registered": 9
+      "registered": 10
     },
     "recent": [
+      {
+        "id": "sys-20dd1672-ee55-48c7-8ea6-73e9560dc18b",
+        "name": "版权到期预警台",
+        "version": "0.5.1",
+        "status": "registered",
+        "created_at": "2026-11-15T17:34:27.561Z",
+        "source_spec_id": "spec-202154e1-07cb-49c4-95ff-2cd53bd40bb1",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
+      },
       {
         "id": "sys-06369e1d-5bdc-42b1-a679-ed66078b0ed3",
         "name": "版权到期预警台",
@@ -292,15 +303,6 @@
         "source_skill_ids": [
           "operations:project-context"
         ]
-      },
-      {
-        "id": "sys-a136a8f7-1f12-4f79-9164-1943e33d92b5",
-        "name": "LexNusa 法规监测台",
-        "version": "0.1.0",
-        "status": "registered",
-        "created_at": "2026-11-13T10:28:20.677Z",
-        "source_spec_id": "spec-96b35371-1717-4faf-99b6-f37695ab0a45",
-        "source_skill_ids": []
       }
     ],
     "list": [
@@ -396,6 +398,17 @@
         "source_skill_ids": [
           "operations:project-context"
         ]
+      },
+      {
+        "id": "sys-20dd1672-ee55-48c7-8ea6-73e9560dc18b",
+        "name": "版权到期预警台",
+        "version": "0.5.1",
+        "status": "registered",
+        "created_at": "2026-11-15T17:34:27.561Z",
+        "source_spec_id": "spec-202154e1-07cb-49c4-95ff-2cd53bd40bb1",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
       }
     ]
   },
@@ -434,12 +447,21 @@
       ]
     },
     "instances": {
-      "total": 3,
+      "total": 4,
       "by_status": {
+        "revoked": 1,
         "deployed": 3
       },
       "attention": [],
       "recent": [
+        {
+          "id": "inst-dae2c274-aebe-4541-a4b7-ee1e98dbfc39",
+          "system_id": "sys-20dd1672-ee55-48c7-8ea6-73e9560dc18b",
+          "target_id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
+          "version": "0.5.1",
+          "status": "deployed",
+          "last_health_at": "2026-11-15T17:37:58.845Z"
+        },
         {
           "id": "inst-c76d3757-a099-4504-92f9-d3191f4907a7",
           "system_id": "sys-d21ef785-a786-4014-b28e-9b67861261f1",
@@ -461,7 +483,7 @@
           "system_id": "sys-ee6543aa-3b90-4be1-9333-78df6e0cabb6",
           "target_id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
           "version": "0.4.0",
-          "status": "deployed",
+          "status": "revoked",
           "last_health_at": "2026-11-15T10:40:55.213Z"
         }
       ],
@@ -471,7 +493,7 @@
           "system_id": "sys-ee6543aa-3b90-4be1-9333-78df6e0cabb6",
           "target_id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
           "version": "0.4.0",
-          "status": "deployed",
+          "status": "revoked",
           "last_health_at": "2026-11-15T10:40:55.213Z"
         },
         {
@@ -489,6 +511,14 @@
           "version": "0.2.0",
           "status": "deployed",
           "last_health_at": "2026-11-15T14:30:52.562Z"
+        },
+        {
+          "id": "inst-dae2c274-aebe-4541-a4b7-ee1e98dbfc39",
+          "system_id": "sys-20dd1672-ee55-48c7-8ea6-73e9560dc18b",
+          "target_id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
+          "version": "0.5.1",
+          "status": "deployed",
+          "last_health_at": "2026-11-15T17:37:58.845Z"
         }
       ]
     }
