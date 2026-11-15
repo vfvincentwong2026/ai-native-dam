@@ -17,6 +17,7 @@ import {
   GenerateSystemSpecInput,
   SubmitSystemSpecInput,
   SearchSpecsInput,
+  TriggerDamBriefPackInput,
   RequestDistillationInput,
   ApproveDistillationInput,
   SearchDistillationsInput,
@@ -313,6 +314,51 @@ export const GATEWAY_TOOLS: GatewayTool[] = [
       };
       await ctx.store.putKnowledge(entry);
       return { entry };
+    },
+  },
+  {
+    name: 'trigger_dam_brief_pack',
+    description:
+      'Request a content brief pack for a campaign/SKU/creator set from an execution plane ' +
+      '(e.g. Nexus-Ecom-Matrix). Gated by approval; lands as a pending_approval knowledge entry ' +
+      'of type dam_brief_pack_request. Approval moves it into the DAM content pipeline.',
+    riskLevel: 'medium',
+    gated: true,
+    scopes: ['Edit'],
+    inputSchema: {
+      type: 'object',
+      properties: {
+        campaign_id: { type: 'string', minLength: 1 },
+        sku_id: { type: 'string', minLength: 1 },
+        creator_ids: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['campaign_id', 'sku_id'],
+    },
+    schema: TriggerDamBriefPackInput,
+    handler: async (args: z.infer<typeof TriggerDamBriefPackInput>, ctx: ToolContext) => {
+      const entry: KnowledgeEntry = {
+        id: `kn-${randomUUID()}`,
+        title: `Brief Pack Request: ${args.campaignId} / ${args.skuId}`,
+        layer: 'raw',
+        content: JSON.stringify({
+          type: 'dam_brief_pack_request',
+          campaign_id: args.campaignId,
+          sku_id: args.skuId,
+          creator_ids: args.creatorIds,
+        }),
+        sourceAssetIds: [],
+        status: 'pending_approval',
+        createdAt: new Date().toISOString(),
+        approvedAt: null,
+      };
+      await ctx.store.putKnowledge(entry);
+      return {
+        entry,
+        briefPackRequestId: entry.id,
+        campaignId: args.campaignId,
+        skuId: args.skuId,
+        creatorIds: args.creatorIds,
+      };
     },
   },
   {

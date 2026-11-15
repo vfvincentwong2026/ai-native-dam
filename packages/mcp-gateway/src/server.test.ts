@@ -262,6 +262,23 @@ describe('gated write tools (two-call confirmation)', () => {
     expect(visible.entries).toHaveLength(1);
   });
 
+  it('trigger_dam_brief_pack lands as a typed pending_approval entry with native fields', async () => {
+    const args = { campaign_id: 'CP-DEMO', sku_id: 'SKU-002', creator_ids: ['CR-02'] };
+    const w1 = unwrapToolJson({ body: (await callTool('trigger_dam_brief_pack', args)).body });
+    expect(w1.approval_required).toBe(true);
+    expect(w1.risk_level).toBe('medium');
+    const w2 = unwrapToolJson({ body: (await callTool('trigger_dam_brief_pack', { ...args, _confirmation: w1.confirmation_token })).body });
+    expect(w2.entry.status).toBe('pending_approval');
+    expect(w2.brief_pack_request_id).toBe(w2.entry.id);
+    const content = JSON.parse(w2.entry.content);
+    expect(content.type).toBe('dam_brief_pack_request');
+    expect(content.campaign_id).toBe('CP-DEMO');
+    expect(content.creator_ids).toEqual(['CR-02']);
+
+    const found = unwrapToolJson({ body: (await callTool('search_knowledge', { query: 'Brief Pack', only_approved: false }, 'read-token')).body });
+    expect(found.entries).toHaveLength(1);
+  });
+
   it('approve_knowledge approves a pending entry; repeats and unknown ids are rejected', async () => {
     const args = { title: 'Posting cadence rule', layer: 'rule', content: 'Cadence: at most twice a day.' };
     const w1 = unwrapToolJson({ body: (await callTool('write_knowledge', args)).body });

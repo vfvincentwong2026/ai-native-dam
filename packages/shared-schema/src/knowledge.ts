@@ -39,6 +39,19 @@ export const WriteKnowledgeInput = z.object({
 });
 export type WriteKnowledgeInput = z.infer<typeof WriteKnowledgeInput>;
 
+/**
+ * Native brief-pack request from an execution plane (e.g. Nexus-Ecom-Matrix).
+ * Lands as a pending_approval knowledge entry of type dam_brief_pack_request;
+ * approval moves it into the DAM content pipeline. Previously emulated by
+ * callers via write_knowledge — this tool keeps the semantics explicit.
+ */
+export const TriggerDamBriefPackInput = z.object({
+  campaignId: z.string().min(1),
+  skuId: z.string().min(1),
+  creatorIds: z.array(z.string()).default([]),
+});
+export type TriggerDamBriefPackInput = z.infer<typeof TriggerDamBriefPackInput>;
+
 export const WriteKnowledgeOutput = z.object({
   entry: KnowledgeEntry,
 });
