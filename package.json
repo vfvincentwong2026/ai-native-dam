@@ -11,6 +11,7 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r build && pnpm -r typecheck",
     "smoke:builder": "node scripts/build-smoke.mjs",
+    "build:real": "node scripts/build-real.mjs",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down"
   },

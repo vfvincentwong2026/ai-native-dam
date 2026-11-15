@@ -16,6 +16,10 @@ export {
   type TransportResult,
 } from './transport.js';
 export {
+  OpenAiHttpTransport,
+  type OpenAiHttpTransportOptions,
+} from './transport-openai.js';
+export {
   BudgetExceededError,
   DEFAULT_TIER_MODELS,
   ModelRouter,

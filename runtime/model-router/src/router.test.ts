@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BudgetExceededError,
   ModelRouter,
+  OpenAiHttpTransport,
   RouterTransportError,
   SquillaHttpTransport,
   type ModelTransport,
@@ -199,5 +200,77 @@ describe('SquillaHttpTransport', () => {
     await expect(
       transport.complete({ model: 'm', tier: 'C0', prompt: 'p' }),
     ).rejects.toThrow(/no completion text/);
+  });
+});
+
+
+describe('OpenAiHttpTransport', () => {
+  function fakeFetch(payload: unknown, status = 200) {
+    const seen: { url: unknown; init: RequestInit }[] = [];
+    const fetchImpl = (async (url: unknown, init: RequestInit) => {
+      seen.push({ url: url as string, init });
+      return new Response(typeof payload === 'string' ? payload : JSON.stringify(payload), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as unknown as typeof fetch;
+    return { seen, fetchImpl };
+  }
+
+  it('posts the chat-completions envelope with auth and maps usage', async () => {
+    const { seen, fetchImpl } = fakeFetch({
+      choices: [{ message: { content: 'export class LicenseAlert {}' } }],
+      model: 'openai/gpt-4o-mini',
+      usage: { prompt_tokens: 31, completion_tokens: 9 },
+    });
+    const transport = new OpenAiHttpTransport({
+      baseUrl: 'https://openrouter.ai/api/v1/',
+      apiKey: 'sk-or-test',
+      fetchImpl,
+    });
+
+    const result = await transport.complete({ model: 'openai/gpt-4o-mini', tier: 'C1', prompt: 'p', maxTokens: 256 });
+
+    expect(seen[0].url).toBe('https://openrouter.ai/api/v1/chat/completions');
+    const init = seen[0].init;
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer sk-or-test');
+    expect(JSON.parse(init.body as string)).toEqual({
+      model: 'openai/gpt-4o-mini',
+      messages: [{ role: 'user', content: 'p' }],
+      max_tokens: 256,
+    });
+    expect(result).toEqual({
+      text: 'export class LicenseAlert {}',
+      model: 'openai/gpt-4o-mini',
+      inputTokens: 31,
+      outputTokens: 9,
+    });
+  });
+
+  it('omits the Authorization header when no api key is set (local endpoints)', async () => {
+    const { seen, fetchImpl } = fakeFetch({ choices: [{ message: { content: 'ok' } }] });
+    const transport = new OpenAiHttpTransport({ baseUrl: 'http://localhost:11434/v1', fetchImpl });
+
+    await transport.complete({ model: 'qwen2.5-coder', tier: 'C0', prompt: 'p' });
+
+    expect((seen[0].init.headers as Record<string, string>).Authorization).toBeUndefined();
+  });
+
+  it('maps HTTP errors to RouterTransportError with the status', async () => {
+    const { fetchImpl } = fakeFetch('{"error":"insufficient credits"}', 402);
+    const transport = new OpenAiHttpTransport({ baseUrl: 'http://x', fetchImpl });
+
+    await expect(
+      transport.complete({ model: 'm', tier: 'C0', prompt: 'p' }),
+    ).rejects.toMatchObject({ name: 'RouterTransportError', status: 402 });
+  });
+
+  it('rejects payloads without completion content', async () => {
+    const { fetchImpl } = fakeFetch({ choices: [] });
+    const transport = new OpenAiHttpTransport({ baseUrl: 'http://x', fetchImpl });
+
+    await expect(
+      transport.complete({ model: 'm', tier: 'C0', prompt: 'p' }),
+    ).rejects.toThrow(/no completion content/);
   });
 });

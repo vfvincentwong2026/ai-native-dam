@@ -25,6 +25,19 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `OpenAiHttpTransport` — a second `ModelTransport` implementation speaking
+  the OpenAI chat-completions envelope (OpenRouter, DeepSeek, local
+  Ollama, …), so real Builder Runtime compiles no longer require a
+  SquillaRouter. 4 new offline tests (envelope shape, auth header optional,
+  error mapping, empty-content rejection).
+- `pnpm build:real` (`scripts/build-real.mjs`) — the smoke chain with REAL
+  LLM egress: compilation routes through `ModelRouter` (tier map + run
+  budget breakers via env) over the OpenAI-compatible endpoint configured
+  in `.env` (`MODEL_ROUTER_BASE_URL` / `MODEL_ROUTER_API_KEY`, both
+  documented in `.env.example`). Prints the router ledger (calls, tokens)
+  and a peek at the generated code. First live run: 9 calls, 3 629 tokens,
+  0 failures, verify gate 9/9, registered as `@0.2.0` with the full
+  four-level traceability chain.
 - `pnpm smoke:builder` (`scripts/build-smoke.mjs`) — an end-to-end smoke of
   the ADR 0010 chain against a real PGlite store: boots the gateway
   in-process (own tokens, random port), walks spec approval → blueprint
