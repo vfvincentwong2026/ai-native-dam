@@ -8,6 +8,41 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Deterministic server entry + route contract (0.5.0 architecture).** The
+  generated system's HTTP wiring is no longer LLM output: `src/server.ts`
+  (node:http server, `/health`, every route's `handle()` in blueprint order,
+  404 fallback, `PORT` env), `src/contract.ts` (`DamRequest`/`DamResponse`/
+  `RouteHandle` structural types), and `tsconfig.json` are emitted by the
+  compiler itself (`DETERMINISTIC_FILES`) and the repair loop skips them.
+  Route modules export exactly `handle: RouteHandle`; models take `db` as
+  their first parameter; tests exercise routes with plain mock objects —
+  all three contracts are stated verbatim in the generation prompts and
+  enforced by `tsc` at the call site. Import specifiers use literal `.ts`
+  extensions because the service runs under node's native type stripping.
+
+- **Deterministic schema creation (`src/schema.ts`).** Every entity file
+  (model/route/test) now carries a planned table binding (`BlueprintFile.entity`:
+  table name from the entity slug, columns mapped from spec field types), the
+  compiler emits `ensureSchema(db)` with `CREATE TABLE IF NOT EXISTS` per
+  entity, and `server.ts` applies it at boot while tests call it on their
+  in-memory db. Root cause this kills: when the LLM omitted CREATE TABLE,
+  builds passed every gate yet every CRUD route 500'd at runtime with
+  "no such table". Identifiers are validated against a plain-SQL whitelist
+  before emission. The prompts state the exact table/columns and ban
+  CREATE TABLE in generated code.
+
+- **Repair-loop hardening.** Blamed-file extraction now also parses vitest
+  stack frames (`❯ fn src/x.ts:47:21`) and `config file '...'` references,
+  `LOG_TAIL` grew 500 → 4000 (multi-line tsc errors pushed path lines out of
+  the old window), repair prompts include sibling-file context (test ↔
+  route ↔ model), and `sandboxRepairAttempts` defaults to 4.
+
+- **`scripts/deploy-local.mjs --retire-others`** — after registering the new
+  instance it revokes the system's other live instances on the same target,
+  so version cutover is one command instead of a manual revoke pass.
+
+### Added
+
 - **Public governance dashboard on Cloudflare Pages.** The repo root now
   deploys to https://ai-native-dam.pages.dev: `/governance/` renders a
   read-only governance overview (Skill registry, System Spec approvals,

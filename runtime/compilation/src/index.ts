@@ -8,18 +8,25 @@ export type {
   Blueprint,
   BlueprintFile,
   BlueprintModule,
+  EntityFieldSchema,
+  EntityTableSchema,
   FileKind,
   ModuleKind,
   PromptPlanItem,
   PromptTier,
   StackChoice,
 } from './blueprint.js';
-export { kebab, planBlueprint } from './plan.js';
+export { kebab, planBlueprint, tableName } from './plan.js';
 export { generateManifest, type ManifestOptions } from './manifest.js';
 export { verifyBuild, type BuildOutput, type VerifyCheck, type VerifyReport } from './verify.js';
 export {
+  columnList,
   executeBlueprint,
+  generateContract,
+  generateSchema,
+  generateServer,
   generateTsconfig,
+  isDeterministicPath,
   storageNote,
   stripCodeFences,
   toBuildOutput,

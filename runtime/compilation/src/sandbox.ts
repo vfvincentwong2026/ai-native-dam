@@ -91,7 +91,10 @@ export interface DockerSandboxOptions {
 }
 
 const STEP_ORDER: readonly SandboxStepName[] = ['install', 'build', 'smoke'];
-const LOG_TAIL = 500;
+// 500 chars was too short: multi-line tsc messages (TS2352 overlap blocks)
+// pushed the "file(line,col): error" lines out of the tail, which starved
+// the orchestrator's repair-loop parser of blamed paths.
+const LOG_TAIL = 4000;
 
 /**
  * Runs each step as `docker run --rm -v <dir>:/work -w /work <image> sh -lc

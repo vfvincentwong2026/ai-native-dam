@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SystemSpec } from '@ai-native-dam/shared-schema';
-import { executeBlueprint, generateManifest, generateTsconfig, planBlueprint, toBuildOutput, verifyBuild, type BlueprintCompleter, type PromptTier } from './index.js';
+import { executeBlueprint, generateManifest, generateSchema, generateServer, generateTsconfig, isDeterministicPath, planBlueprint, toBuildOutput, verifyBuild, type BlueprintCompleter, type PromptTier } from './index.js';
 
 const SPEC: SystemSpec = {
   id: 'spec-0001',
@@ -52,10 +52,10 @@ describe('executeBlueprint', () => {
     const build = await executeBlueprint(blueprint, { runId: 'run-1', completer });
 
     const planned = blueprint.promptPlan;
-    // every item except the two deterministic files goes through the completer
-    expect(calls).toHaveLength(planned.length - 2);
+    // every item except the five deterministic files goes through the completer
+    expect(calls).toHaveLength(planned.length - 5);
     expect(calls.map((c) => c.promptSummary)).toEqual(
-      planned.filter((p) => p.file !== 'dam.manifest.yaml' && p.file !== 'tsconfig.json').map((p) => p.promptSummary),
+      planned.filter((p) => !['dam.manifest.yaml', 'tsconfig.json', 'src/contract.ts', 'src/schema.ts', 'src/server.ts'].includes(p.file)).map((p) => p.promptSummary),
     );
     // tiers route as planned: workflow file at C2, review at C3
     const reviewCall = calls.find((c) => c.promptSummary.includes('Cross-module'));
@@ -78,6 +78,9 @@ describe('executeBlueprint', () => {
     const tsconfigItem = blueprint.promptPlan.find((p) => p.file === 'tsconfig.json');
     expect(tsconfigItem).toBeDefined();
     expect(calls.some((c) => c.promptSummary === tsconfigItem!.promptSummary)).toBe(false);
+    const serverItem = blueprint.promptPlan.find((p) => p.file === 'src/server.ts');
+    expect(serverItem).toBeDefined();
+    expect(calls.some((c) => c.promptSummary === serverItem!.promptSummary)).toBe(false);
     const manifestFile = build.files.find((f) => f.path === 'dam.manifest.yaml');
     expect(manifestFile?.content).toBe(generateManifest(blueprint));
     expect(build.manifest).toBe(generateManifest(blueprint));
@@ -148,7 +151,7 @@ describe('stripCodeFences', () => {
 
     const build = await executeBlueprint(blueprint, { runId: 'run-fences', completer });
 
-    const generated = build.files.filter((f) => f.path !== 'dam.manifest.yaml' && f.path !== 'tsconfig.json');
+    const generated = build.files.filter((f) => !['dam.manifest.yaml', 'tsconfig.json', 'src/contract.ts', 'src/schema.ts', 'src/server.ts'].includes(f.path));
     expect(generated.length).toBeGreaterThan(0);
     for (const f of generated) {
       expect(f.content.startsWith('```')).toBe(false);
@@ -190,11 +193,104 @@ describe('stripCodeFences', () => {
 
     const build = await executeBlueprint(blueprint, { runId: 'run-pathline', completer: echoing });
 
-    const generated = build.files.filter((f) => f.path !== 'dam.manifest.yaml' && f.path !== 'tsconfig.json');
+    const generated = build.files.filter((f) => !['dam.manifest.yaml', 'tsconfig.json', 'src/contract.ts', 'src/schema.ts', 'src/server.ts'].includes(f.path));
     for (const f of generated) {
       expect(f.content.startsWith('```')).toBe(false);
       expect(f.content.split('\n')[0]).not.toBe(f.path);
       expect(f.content).toContain(f.promptSummary);
     }
+  });
+});
+
+describe('generateServer', () => {
+  it('wires every planned route module behind /health, deterministically', () => {
+    const blueprint = planBlueprint(SPEC);
+    const server = generateServer(blueprint);
+    const routes = blueprint.files.filter((f) => f.kind === 'route');
+
+    // one aliased import per route, pointing at the emitted .js path
+    for (const [i, r] of routes.entries()) {
+      expect(server).toContain(`import { handle as handle${i} } from './${r.path.replace(/^src\//, '')}';`);
+    }
+    expect(server).toContain(`const handlers: RouteHandle[] = [${routes.map((_, i) => `handle${i}`).join(', ')}];`);
+    expect(server).toContain("'/health'");
+    expect(server).toContain('process.env.PORT');
+    // deterministic: same blueprint, same bytes
+    expect(generateServer(blueprint)).toBe(server);
+    expect(isDeterministicPath('src/server.ts')).toBe(true);
+    expect(isDeterministicPath('src/routes/drama.ts')).toBe(false);
+  });
+
+  it('applies the deterministic schema before serving', () => {
+    const server = generateServer(planBlueprint(SPEC));
+    expect(server).toContain(`import { ensureSchema } from './schema.ts';`);
+    expect(server).toContain('ensureSchema(db);');
+  });
+});
+
+describe('generateSchema', () => {
+  it('emits CREATE TABLE IF NOT EXISTS for every planned entity table', () => {
+    const blueprint = planBlueprint(SPEC);
+    const schema = generateSchema(blueprint);
+
+    expect(schema).toContain('export function ensureSchema(db: DatabaseSync): void');
+    expect(schema).toContain(
+      'CREATE TABLE IF NOT EXISTS drama (id TEXT PRIMARY KEY, title TEXT NOT NULL)',
+    );
+    // deterministic: same blueprint, same bytes; schema never goes to the LLM
+    expect(generateSchema(blueprint)).toBe(schema);
+    expect(isDeterministicPath('src/schema.ts')).toBe(true);
+  });
+
+  it('maps every spec field type onto a SQLite affinity', () => {
+    const spec: SystemSpec = {
+      ...SPEC,
+      entities: [
+        {
+          name: 'asset',
+          fields: [
+            { name: 'id', type: 'string', required: true },
+            { name: 'size', type: 'number', required: false },
+            { name: 'active', type: 'boolean', required: true },
+            { name: 'expiresAt', type: 'datetime', required: false },
+            { name: 'meta', type: 'json', required: false },
+          ],
+          permissions: ['read'],
+        },
+      ],
+    };
+    const schema = generateSchema(planBlueprint(spec));
+    expect(schema).toContain(
+      'CREATE TABLE IF NOT EXISTS asset (id TEXT PRIMARY KEY, size REAL, active INTEGER NOT NULL, expiresAt TEXT, meta TEXT)',
+    );
+  });
+
+  it('refuses identifiers that are not plain SQL (injection guard)', () => {
+    const spec: SystemSpec = {
+      ...SPEC,
+      entities: [
+        {
+          name: 'evil',
+          fields: [{ name: 'x"); DROP TABLE t; --', type: 'string', required: true }],
+          permissions: ['read'],
+        },
+      ],
+    };
+    expect(() => generateSchema(planBlueprint(spec))).toThrow(/not a plain SQL identifier/);
+  });
+
+  it('tells model/route/test prompts the exact planned table and bans CREATE TABLE', async () => {
+    const blueprint = planBlueprint(SPEC);
+    const { calls, completer } = fakeCompleter();
+    await executeBlueprint(blueprint, { runId: 'run-tbl', completer });
+
+    for (const kind of ['src/models/', 'src/routes/', 'tests/']) {
+      const call = calls.find((c) => c.prompt.includes(`Generate the file ${kind}drama`));
+      expect(call?.prompt).toContain('Table contract: SQLite table "drama" ALREADY EXISTS');
+      expect(call?.prompt).toContain('NEVER write CREATE TABLE');
+    }
+    // tests must build the schema on their in-memory db themselves
+    const test = calls.find((c) => c.prompt.includes('Generate the file tests/drama'));
+    expect(test?.prompt).toContain('ensureSchema(db)');
   });
 });

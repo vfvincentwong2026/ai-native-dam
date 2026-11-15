@@ -12,6 +12,7 @@
     "typecheck": "pnpm -r build && pnpm -r typecheck",
     "smoke:builder": "node scripts/build-smoke.mjs",
     "build:real": "node scripts/build-real.mjs",
+    "dev": "node scripts/dev-site.mjs",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down"
   },

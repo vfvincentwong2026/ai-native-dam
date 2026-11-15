@@ -41,14 +41,33 @@ describe('planBlueprint', () => {
     expect(other.hash).not.toBe(planBlueprint(baseSpec).hash);
   });
 
-  it('emits the InstallableUnit L1 core files (manifest + health)', () => {
+  it('emits the InstallableUnit L1 core files (manifest + deterministic server entry)', () => {
     const bp = planBlueprint(baseSpec);
     const paths = bp.files.map((f) => f.path);
     expect(paths).toContain('dam.manifest.yaml');
-    expect(paths).toContain('src/health.ts');
+    expect(paths).toContain('src/server.ts');
+    expect(paths).toContain('src/schema.ts');
     const manifest = bp.files.find((f) => f.path === 'dam.manifest.yaml');
     expect(manifest?.module).toBe('core');
     expect(manifest?.tier).toBe('C0');
+  });
+
+  it('binds every entity file to the same deterministic table schema', () => {
+    const bp = planBlueprint(baseSpec);
+    const bound = bp.files.filter((f) => f.entity);
+    expect(bound.map((f) => f.path).sort()).toEqual([
+      'src/models/short-drama-record.ts',
+      'src/routes/short-drama-record.ts',
+      'tests/short-drama-record.test.ts',
+    ]);
+    for (const f of bound) {
+      expect(f.entity?.table).toBe('short_drama_record');
+      expect(f.entity?.fields.map((x) => `${x.name}:${x.type}`)).toEqual([
+        'id:string',
+        'title:string',
+        'status:string',
+      ]);
+    }
   });
 
   it('maps every entity to model + route + test files (C1) with verbs from permissions', () => {

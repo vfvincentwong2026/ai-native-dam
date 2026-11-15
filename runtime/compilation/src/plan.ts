@@ -61,6 +61,16 @@ export function kebab(input: string): string {
 }
 
 /**
+ * Deterministic table name for an entity slug. Generated models/routes/tests
+ * are told this exact name, and src/schema.ts creates it — the LLM never
+ * picks a table name again (observed drift: route said license_alert while
+ * nothing created it → every CRUD call 500'd at runtime).
+ */
+export function tableName(slug: string): string {
+  return slug.replace(/-/g, '_');
+}
+
+/**
  * Slugify a list, disambiguating collisions (`unnamed`, `unnamed-2`, …) so
  * CJK or punctuation-only names can never collapse two workflows into one file.
  */
@@ -153,14 +163,34 @@ function planFiles(
       path: 'tsconfig.json',
       kind: 'config',
       module: 'core',
-      purpose: 'TypeScript compiler config: strict, NodeNext modules, outDir dist',
+      purpose: 'TypeScript compiler config: strict, ESNext modules with Bundler resolution, .ts extension imports, noEmit (type-check only)',
       tier: 'C0',
     },
     {
-      path: 'src/health.ts',
-      kind: 'health',
+      path: 'src/server.ts',
+      kind: 'core',
       module: 'core',
-      purpose: 'Standard /health endpoint required by InstallableUnit L1',
+      purpose:
+        'Deterministic server entry (never LLM-generated): node:http server mounting /health plus every ' +
+        'route module\'s handle() in blueprint order, 404 fallback, PORT env (default 3000)',
+      tier: 'C0',
+    },
+    {
+      path: 'src/contract.ts',
+      kind: 'contract',
+      module: 'core',
+      purpose:
+        'Deterministic route contract types (never LLM-generated): DamRequest/DamResponse minimal ' +
+        'structural shapes + RouteHandle — mocks in tests type-check against these, not node:http classes',
+      tier: 'C0',
+    },
+    {
+      path: 'src/schema.ts',
+      kind: 'core',
+      module: 'core',
+      purpose:
+        'Deterministic schema (never LLM-generated): ensureSchema(db) creates every entity table ' +
+        '(CREATE TABLE IF NOT EXISTS) from the planned entity bindings; server.ts calls it at boot',
       tier: 'C0',
     },
     {
@@ -174,6 +204,12 @@ function planFiles(
   spec.entities.forEach((entity, i) => {
     const slug = entitySlugs[i];
     const module = `entity:${slug}`;
+    // Same binding on all three files so the compiler can emit src/schema.ts
+    // and every prompt can state the exact table the code must use.
+    const binding = {
+      table: tableName(slug),
+      fields: entity.fields.map((f) => ({ name: f.name, type: f.type, required: f.required })),
+    };
     files.push(
       {
         path: `src/models/${slug}.ts`,
@@ -181,6 +217,7 @@ function planFiles(
         module,
         purpose: `${entity.name} schema: ${entity.fields.map((f) => `${f.name}:${f.type}`).join(', ')}`,
         tier: 'C1',
+        entity: binding,
       },
       {
         path: `src/routes/${slug}.ts`,
@@ -188,6 +225,7 @@ function planFiles(
         module,
         purpose: `${entity.name} CRUD routes (${routeVerbs(entity).join(' ')})`,
         tier: 'C1',
+        entity: binding,
       },
       {
         path: `tests/${slug}.test.ts`,
@@ -195,6 +233,7 @@ function planFiles(
         module,
         purpose: `Route-level smoke tests for ${entity.name}`,
         tier: 'C1',
+        entity: binding,
       },
     );
   });

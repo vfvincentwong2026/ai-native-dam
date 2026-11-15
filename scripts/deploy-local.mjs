@@ -28,6 +28,7 @@ async function main() {
   const systemId = arg('system', null);
   const endpoint = arg('endpoint', null);
   const targetName = arg('target-name', 'owner-laptop (local dev)');
+  const retireOthers = process.argv.includes('--retire-others');
   if (!systemId || !endpoint) {
     throw new Error('usage: deploy-local.mjs --system <system-id> --endpoint <base-url> [--target-name "…"]');
   }
@@ -64,13 +65,23 @@ async function main() {
       log(`target registered: ${target.id} (${target.name}, ${target.kind})`);
     }
 
-    // 3. Instance: reuse live one, else register (gated).
-    const live = existing.instances.find(
-      (i) => (i.system_id === systemId || i.systemId === systemId) &&
-        (i.target_id === target.id || i.targetId === target.id) &&
-        (i.status ?? '') !== 'revoked',
+    // 3. Instance: reuse live one, else register (gated). With
+    // --retire-others, other live instances on the same target are revoked
+    // first (one port, one listener — a stale instance would be a lie).
+    const isLive = (i) => (i.status ?? '') !== 'revoked';
+    const sameTarget = (i) => (i.target_id ?? i.targetId) === target.id;
+    let instance = existing.instances.find(
+      (i) => (i.system_id ?? i.systemId) === systemId && sameTarget(i) && isLive(i),
     );
-    let instance = live;
+    if (retireOthers) {
+      for (const i of existing.instances.filter((x) => sameTarget(x) && isLive(x) && (x.system_id ?? x.systemId) !== systemId)) {
+        await gated(callTool, 'revoke_instance', {
+          instance_id: i.id,
+          reason: `superseded: target re-deployed with system ${systemId}`,
+        });
+        log(`instance revoked: ${i.id} (superseded)`);
+      }
+    }
     if (instance) {
       log(`instance reused: ${instance.id} (status ${instance.status})`);
     } else {

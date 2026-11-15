@@ -150,7 +150,7 @@ try {
       // fence, node:sqlite API guesses). Allow two targeted repair rounds:
       // the blamed files are regenerated with the exact compiler log, then
       // the sandbox re-runs.
-      sandboxRepairAttempts: 3,
+      sandboxRepairAttempts: 4,
     });
 
     const run = await orchestrator.startRun(specId);
@@ -159,8 +159,15 @@ try {
     log(`blueprint planned: ${blueprint.id} hash=${blueprint.hash} files=${blueprint.files.length}`);
 
     // REAL compilation: every call routed by tier, ledgered, budget-guarded.
+    // Free-pool models (e.g. 550B params) can take minutes per completion —
+    // the 120s transport default aborts them mid-generation, so the timeout
+    // is an explicit run knob.
     const router = new ModelRouter({
-      transport: new OpenAiHttpTransport({ baseUrl, apiKey }),
+      transport: new OpenAiHttpTransport({
+        baseUrl,
+        apiKey,
+        timeoutMs: Number(process.env.MODEL_TIMEOUT_MS ?? 120_000),
+      }),
       tierModels,
       budget,
     });

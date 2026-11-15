@@ -33,11 +33,31 @@ export type FileKind =
   | 'manifest'
   | 'config'
   | 'health'
+  | 'core'
+  | 'contract'
   | 'doc'
   | 'model'
   | 'route'
   | 'workflow'
   | 'test';
+
+/** Column shape of one entity field, mirrored from the spec. */
+export interface EntityFieldSchema {
+  readonly name: string;
+  readonly type: 'string' | 'number' | 'boolean' | 'datetime' | 'json';
+  readonly required: boolean;
+}
+
+/**
+ * Deterministic table binding carried by every entity file (model, route,
+ * test). This is what makes src/schema.ts possible: the compiler emits the
+ * CREATE TABLE statements itself, so generated code never creates tables and
+ * the table name/columns are fixed by the plan, not by the LLM.
+ */
+export interface EntityTableSchema {
+  readonly table: string;
+  readonly fields: readonly EntityFieldSchema[];
+}
 
 export interface BlueprintFile {
   readonly path: string;
@@ -47,6 +67,8 @@ export interface BlueprintFile {
   readonly purpose: string;
   /** Tier the file's generation prompt would be routed to. */
   readonly tier: PromptTier;
+  /** Present on entity model/route/test files. */
+  readonly entity?: EntityTableSchema;
 }
 
 export interface PromptPlanItem {

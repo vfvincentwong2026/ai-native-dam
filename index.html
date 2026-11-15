@@ -1,34 +1,482 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI-Native DAM</title>
-  <meta name="description" content="The governance plane for AI-native assets, skills, generated systems, and distilled capabilities.">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.6.1/github-markdown.min.css">
-  <style>
-    body { box-sizing: border-box; max-width: 980px; margin: 0 auto; padding: 45px; }
-    @media (max-width: 767px) { body { padding: 15px; } }
-    #content { min-height: 200px; }
-    .loading { color: #888; font-family: monospace; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Native DAM — 让 AI 在治理框架内造系统</title>
+<meta name="description" content="AI-Native DAM 是 AI 原生资产的治理平面：从一份审批过的 System Spec 出发，确定性编译蓝图、受预算约束地生成代码、13 项门禁验证、注册溯源、一键部署。全程可审计、可回溯、可复现。">
+<style>
+  :root {
+    --bg: #05080e;
+    --panel: rgba(15, 21, 32, 0.78);
+    --line: #1b2534;
+    --line-soft: rgba(27, 37, 52, 0.6);
+    --ink: #e9eff7;
+    --dim: #7c8aa0;
+    --faint: #55637a;
+    --green: #2ee59d;
+    --amber: #f0b429;
+    --red: #ff5c6c;
+    --blue: #4fa3ff;
+    --violet: #9d7bff;
+    --cyan: #38d5e8;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(1000px 480px at 88% -8%, rgba(46, 229, 157, 0.07), transparent 62%),
+      radial-gradient(860px 520px at -5% 108%, rgba(79, 163, 255, 0.06), transparent 62%),
+      linear-gradient(rgba(27, 37, 52, 0.32) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(27, 37, 52, 0.32) 1px, transparent 1px);
+    background-size: auto, auto, 46px 46px, 46px 46px;
+  }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── nav ─────────────────────────────── */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 40px;
+    background: rgba(5, 8, 14, 0.82); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .brand .logo {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: linear-gradient(135deg, rgba(46,229,157,.22), rgba(79,163,255,.16));
+    border: 1px solid rgba(46,229,157,.42);
+    display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 700; color: var(--green); font-size: 14px;
+    box-shadow: 0 0 22px rgba(46,229,157,.16);
+  }
+  .brand .name { font-size: 16px; font-weight: 650; letter-spacing: .04em; }
+  .brand .name span { color: var(--green); font-family: var(--mono); font-weight: 600; }
+  .nav-links { display: flex; align-items: center; gap: 26px; font-size: 13.5px; }
+  .nav-links a { color: var(--dim); }
+  .nav-links a:hover { color: var(--ink); text-decoration: none; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 18px; border-radius: 8px;
+    font-size: 13.5px; font-weight: 600; letter-spacing: .02em;
+    border: 1px solid transparent; cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover { text-decoration: none; transform: translateY(-1px); }
+  .btn-primary {
+    background: linear-gradient(135deg, rgba(46,229,157,.92), rgba(56,213,232,.85));
+    color: #04120c;
+    box-shadow: 0 4px 22px rgba(46,229,157,.25);
+  }
+  .btn-primary:hover { box-shadow: 0 6px 28px rgba(46,229,157,.38); }
+  .btn-ghost { border-color: var(--line); color: var(--ink); background: var(--panel); }
+  .btn-ghost:hover { border-color: var(--faint); }
+
+  /* ── hero ────────────────────────────── */
+  .hero {
+    max-width: 1180px; margin: 0 auto;
+    padding: 96px 40px 72px;
+    text-align: center;
+  }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .24em;
+    color: var(--green); text-transform: uppercase;
+    border: 1px solid rgba(46,229,157,.35); border-radius: 999px;
+    padding: 6px 16px; background: rgba(46,229,157,.06);
+  }
+  .kicker i {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+    animation: pulse 2.4s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(46,229,157,.45); }
+    70% { box-shadow: 0 0 0 9px rgba(46,229,157,0); }
+    100% { box-shadow: 0 0 0 0 rgba(46,229,157,0); }
+  }
+  .hero h1 {
+    margin: 26px auto 0; max-width: 880px;
+    font-size: clamp(34px, 5.2vw, 58px); line-height: 1.16;
+    font-weight: 700; letter-spacing: .01em;
+  }
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(100deg, var(--green), var(--cyan) 55%, var(--blue));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero .sub {
+    margin: 22px auto 0; max-width: 680px;
+    font-size: 16.5px; line-height: 1.75; color: var(--dim);
+  }
+  .hero .ctas { margin-top: 36px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .hero .ctas .btn { padding: 13px 26px; font-size: 14.5px; }
+  .proof-strip {
+    margin: 52px auto 0; max-width: 940px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;
+  }
+  .proof {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 14px 13px; position: relative; overflow: hidden;
+  }
+  .proof::after {
+    content: ""; position: absolute; inset: auto 0 0 0; height: 2px;
+    background: linear-gradient(90deg, var(--pc, var(--green)), transparent); opacity: .85;
+  }
+  .proof .num { font-family: var(--mono); font-size: 30px; font-weight: 600; color: var(--pc, var(--ink)); font-variant-numeric: tabular-nums; }
+  .proof .label { font-size: 11px; letter-spacing: .14em; color: var(--dim); text-transform: uppercase; margin-top: 4px; }
+
+  /* ── sections ────────────────────────── */
+  section { max-width: 1180px; margin: 0 auto; padding: 72px 40px 0; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 34px; }
+  .sec-head .idx { font-family: var(--mono); font-size: 12px; color: var(--faint); letter-spacing: .2em; }
+  .sec-head h2 { font-size: clamp(24px, 3vw, 32px); font-weight: 650; letter-spacing: .01em; }
+  .sec-head .rule { flex: 1; height: 1px; background: var(--line); }
+
+  /* problem → solution */
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 860px) { .versus { grid-template-columns: 1fr; } }
+  .vs-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 26px 26px 22px;
+  }
+  .vs-card h3 { font-size: 15px; font-weight: 650; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .vs-card .tag { font-family: var(--mono); font-size: 10px; letter-spacing: .18em; padding: 3px 9px; border-radius: 5px; text-transform: uppercase; }
+  .vs-old .tag { color: var(--red); border: 1px solid rgba(255,92,108,.4); background: rgba(255,92,108,.07); }
+  .vs-new .tag { color: var(--green); border: 1px solid rgba(46,229,157,.4); background: rgba(46,229,157,.07); }
+  .vs-card ul { list-style: none; }
+  .vs-card li { font-size: 14px; line-height: 1.7; color: var(--dim); padding: 7px 0 7px 22px; position: relative; border-top: 1px solid var(--line-soft); }
+  .vs-card li:first-child { border-top: none; }
+  .vs-old li::before { content: "✕"; position: absolute; left: 0; color: var(--red); font-size: 12px; }
+  .vs-new li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-size: 12px; }
+  .vs-new li { color: var(--ink); }
+
+  /* pipeline */
+  .pipeline { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  @media (max-width: 1020px) { .pipeline { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 620px) { .pipeline { grid-template-columns: 1fr 1fr; } }
+  .stage {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 14px 15px; position: relative;
+  }
+  .stage .step { font-family: var(--mono); font-size: 10.5px; letter-spacing: .2em; color: var(--sc, var(--green)); text-transform: uppercase; }
+  .stage h3 { font-size: 15px; font-weight: 650; margin: 8px 0 7px; }
+  .stage p { font-size: 12px; line-height: 1.65; color: var(--dim); }
+  .stage .badge {
+    display: inline-block; margin-top: 10px;
+    font-family: var(--mono); font-size: 10px; color: var(--faint);
+    border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px;
+  }
+  .pipe-note {
+    margin-top: 18px; font-family: var(--mono); font-size: 12px; color: var(--faint);
+    border: 1px dashed var(--line); border-radius: 10px; padding: 13px 18px;
+  }
+  .pipe-note b { color: var(--dim); font-weight: 600; }
+
+  /* live proof */
+  .live {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    overflow: hidden;
+  }
+  .live-head {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    padding: 16px 24px; border-bottom: 1px solid var(--line);
+  }
+  .live-head .title { font-size: 14.5px; font-weight: 650; display: flex; align-items: center; gap: 10px; }
+  .live-head .title i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2.4s infinite; }
+  .live-head a { font-family: var(--mono); font-size: 12px; }
+  .chain { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .chain div { padding: 18px 24px; border-top: 1px solid var(--line-soft); border-right: 1px solid var(--line-soft); }
+  .chain .k { font-size: 10.5px; letter-spacing: .16em; color: var(--faint); text-transform: uppercase; }
+  .chain .v { font-family: var(--mono); font-size: 12.5px; color: var(--green); margin-top: 6px; word-break: break-all; }
+  .chain .v.dim { color: var(--dim); }
+
+  /* benefits */
+  .benefits { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .benefit {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 20px 19px;
+  }
+  .benefit .glyph {
+    width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center;
+    font-family: var(--mono); font-size: 15px; margin-bottom: 13px;
+    color: var(--gc, var(--green));
+    border: 1px solid color-mix(in srgb, var(--gc, var(--green)) 40%, transparent);
+    background: color-mix(in srgb, var(--gc, var(--green)) 8%, transparent);
+  }
+  .benefit h3 { font-size: 14.5px; font-weight: 650; margin-bottom: 7px; }
+  .benefit p { font-size: 12.5px; line-height: 1.7; color: var(--dim); }
+
+  /* quickstart */
+  .quickstart {
+    background: #070c14; border: 1px solid var(--line); border-radius: 14px;
+    padding: 8px 0; font-family: var(--mono); font-size: 13px; overflow-x: auto;
+  }
+  .quickstart .row { display: flex; gap: 16px; padding: 9px 22px; border-top: 1px solid var(--line-soft); white-space: nowrap; }
+  .quickstart .row:first-child { border-top: none; }
+  .quickstart .cmt { color: var(--faint); min-width: 300px; }
+  .quickstart .cmd { color: var(--green); }
+  .quickstart .cmd b { color: var(--cyan); font-weight: 500; }
+
+  /* faq */
+  .faq details {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    margin-bottom: 10px; overflow: hidden;
+  }
+  .faq summary {
+    cursor: pointer; list-style: none;
+    padding: 16px 22px; font-size: 14.5px; font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center; gap: 14px;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; font-family: var(--mono); color: var(--faint); font-size: 16px; transition: transform .15s ease; }
+  .faq details[open] summary::after { transform: rotate(45deg); color: var(--green); }
+  .faq details p { padding: 0 22px 17px; font-size: 13.5px; line-height: 1.75; color: var(--dim); }
+  .faq details p code { font-family: var(--mono); font-size: 12px; color: var(--cyan); background: rgba(56,213,232,.08); padding: 1px 6px; border-radius: 4px; }
+
+  /* final cta + footer */
+  .final {
+    margin-top: 84px; text-align: center;
+    border-top: 1px solid var(--line);
+    padding: 84px 40px 90px;
+    background:
+      radial-gradient(720px 300px at 50% 118%, rgba(46,229,157,.09), transparent 65%);
+  }
+  .final h2 { font-size: clamp(26px, 3.4vw, 38px); font-weight: 700; }
+  .final p { margin: 16px auto 0; max-width: 560px; color: var(--dim); font-size: 15px; line-height: 1.75; }
+  .final .ctas { margin-top: 32px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 26px 40px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--faint);
+  }
+  footer a { color: var(--dim); }
+</style>
 </head>
-<body class="markdown-body">
-  <div id="content" class="loading">Loading README...</div>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script>
-    fetch('/README.md')
-      .then(function (r) {
-        if (!r.ok) throw new Error('README not found');
-        return r.text();
-      })
-      .then(function (t) {
-        document.getElementById('content').className = '';
-        document.getElementById('content').innerHTML = marked.parse(t);
-      })
-      .catch(function (e) {
-        document.getElementById('content').textContent = 'Failed to load README: ' + e.message;
-      });
-  </script>
+<body>
+
+<nav>
+  <div class="brand">
+    <div class="logo">D</div>
+    <div class="name">AI-Native <span>DAM</span></div>
+  </div>
+  <div class="nav-links">
+    <a href="#how">工作原理</a>
+    <a href="#proof">实地验证</a>
+    <a href="#quickstart">如何使用</a>
+    <a href="#faq">FAQ</a>
+    <a class="btn btn-ghost" href="https://github.com/vfvincentwong2026/ai-native-dam">GitHub</a>
+    <a class="btn btn-primary" href="/governance/">治理实况大屏</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="kicker"><i></i>GOVERNANCE PLANE · AI-NATIVE ASSETS</span>
+  <h1>让 AI 造系统，<br>但每一行代码都<em>可审计、可回溯、可复现</em></h1>
+  <p class="sub">
+    AI-Native DAM 是 AI 原生资产的治理平面。从一份审批过的 System Spec 出发：确定性编译蓝图、
+    受预算约束地生成代码、13 项门禁验证、四级溯源注册、一键部署 —— 模型可以换，治理不动。
+  </p>
+  <div class="ctas">
+    <a class="btn btn-primary" href="/governance/">查看治理实况大屏</a>
+    <a class="btn btn-ghost" href="https://github.com/vfvincentwong2026/ai-native-dam">在 GitHub 上阅读源码</a>
+  </div>
+  <div class="proof-strip">
+    <div class="proof"><div class="num">13</div><div class="label">项确定性验证门禁</div></div>
+    <div class="proof" style="--pc:var(--cyan)"><div class="num">4 级</div><div class="label">Spec→蓝图→系统→部署 溯源链</div></div>
+    <div class="proof" style="--pc:var(--blue)"><div class="num">100%</div><div class="label">蓝图确定性编译 · 同 Spec 同哈希</div></div>
+    <div class="proof" style="--pc:var(--violet)"><div class="num">C0–C3</div><div class="label">模型分级路由 + 预算熔断</div></div>
+  </div>
+</header>
+
+<section id="why">
+  <div class="sec-head"><span class="idx">01</span><h2>为什么需要治理平面</h2><span class="rule"></span></div>
+  <div class="versus">
+    <div class="vs-card vs-old">
+      <h3><span class="tag">Without DAM</span>让 AI 直接写系统</h3>
+      <ul>
+        <li>提示词进、代码出 —— 中间没有任何可检查的产物</li>
+        <li>模型幻觉依赖版本，安装即失败，没人知道为什么</li>
+        <li>测试全绿，一部署发现表都没建 —— 门禁形同虚设</li>
+        <li>三个月后没人说得清这个系统是哪份需求、哪个模型造的</li>
+      </ul>
+    </div>
+    <div class="vs-card vs-new">
+      <h3><span class="tag">With DAM</span>治理先行，生成在后</h3>
+      <ul>
+        <li>Spec 必须人工审批通过，蓝图由规则确定性编译</li>
+        <li>依赖集、服务端入口、建表语句全部由编译器确定生成</li>
+        <li>可执行沙箱真实安装、构建、跑测试，失败自动修复重试</li>
+        <li>spec → blueprint hash → system → instance 全链路可查证</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-head"><span class="idx">02</span><h2>六步流水线：从需求到部署</h2><span class="rule"></span></div>
+  <div class="pipeline">
+    <div class="stage" style="--sc:var(--blue)">
+      <div class="step">Step 1 · Spec</div>
+      <h3>规格审批</h3>
+      <p>业务需求落成结构化 System Spec：实体、字段、权限、工作流。人工审批通过才进入下一步。</p>
+      <span class="badge">人类门禁</span>
+    </div>
+    <div class="stage" style="--sc:var(--cyan)">
+      <div class="step">Step 2 · Blueprint</div>
+      <h3>确定性编译</h3>
+      <p>Spec 按固定规则编译成蓝图：技术栈、模块拆分、文件清单。无 LLM、无随机 —— 同 Spec 永远同哈希。</p>
+      <span class="badge">纯函数</span>
+    </div>
+    <div class="stage" style="--sc:var(--green)">
+      <div class="step">Step 3 · Build</div>
+      <h3>受控生成</h3>
+      <p>蓝图携带提示词计划，C0–C3 分级路由到不同模型；服务端入口、契约、建表语句由编译器直出，不经 LLM。</p>
+      <span class="badge">预算熔断</span>
+    </div>
+    <div class="stage" style="--sc:var(--amber)">
+      <div class="step">Step 4 · Verify</div>
+      <h3>门禁验证</h3>
+      <p>13 项确定性检查 + 可执行沙箱：真实安装依赖、tsc 类型检查、跑测试。失败文件定点修复重试。</p>
+      <span class="badge">13 gates</span>
+    </div>
+    <div class="stage" style="--sc:var(--violet)">
+      <div class="step">Step 5 · Register</div>
+      <h3>溯源注册</h3>
+      <p>验证通过才允许注册。系统携带 spec id、blueprint hash、verify report 引用 —— 四级溯源链闭合。</p>
+      <span class="badge">verify-before-register</span>
+    </div>
+    <div class="stage" style="--sc:var(--red)">
+      <div class="step">Step 6 · Deploy</div>
+      <h3>受管部署</h3>
+      <p>健康探针先活查再登记，target → instance → heartbeat 全程留痕，旧版本实例一键吊销完成切换。</p>
+      <span class="badge">拒绝幽灵部署</span>
+    </div>
+  </div>
+  <div class="pipe-note">
+    <b>设计原则：</b>LLM 只出现在"填充业务逻辑"这一个环节；凡是能确定性推导的 —— 依赖清单、tsconfig、
+    server 入口、数据库建表 —— 一律由编译器生成。模型的不确定性被压缩到最小面积。
+  </div>
+</section>
+
+<section id="proof">
+  <div class="sec-head"><span class="idx">03</span><h2>实地验证：版权到期预警台</h2><span class="rule"></span></div>
+  <div class="live">
+    <div class="live-head">
+      <div class="title"><i></i>最新实跑 · 全链路绿 · 已注册已部署</div>
+      <a href="/governance/">在治理大屏中查看实时状态 →</a>
+    </div>
+    <div class="chain">
+      <div>
+        <div class="k">System Spec（已审批）</div>
+        <div class="v dim">每日扫描素材库版权到期日：前 30 天列入观察、前 7 天升级重点预警，输出待续约/待下架两条处置队列</div>
+      </div>
+      <div>
+        <div class="k">Blueprint</div>
+        <div class="v">bp-bdfc53f20c92</div>
+        <div class="k" style="margin-top:8px">确定性编译 · 哈希可复算</div>
+      </div>
+      <div>
+        <div class="k">Generated System</div>
+        <div class="v">sys-06369e1d</div>
+        <div class="k" style="margin-top:8px">版权到期预警台 @ 0.5.x · registered</div>
+      </div>
+      <div>
+        <div class="k">Deployment</div>
+        <div class="v dim">owner-laptop (onprem) → 健康探针实测通过 → instance 登记 + 心跳留痕</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="benefits">
+  <div class="sec-head"><span class="idx">04</span><h2>你能得到什么</h2><span class="rule"></span></div>
+  <div class="benefits">
+    <div class="benefit">
+      <div class="glyph">⛓</div>
+      <h3>全链路可审计</h3>
+      <p>每个线上系统都能回答：来自哪份需求、哪版蓝图、哪次验证、谁批准的。合规检查从"翻聊天记录"变成一次查询。</p>
+    </div>
+    <div class="benefit" style="--gc:var(--cyan)">
+      <div class="glyph">◎</div>
+      <h3>模型可替换</h3>
+      <p>模型分级路由 + 传输层抽象，OpenRouter / DeepSeek / 本地 Ollama 随时切换。供应商锁定不存在，成本自己说了算。</p>
+    </div>
+    <div class="benefit" style="--gc:var(--blue)">
+      <div class="glyph">▣</div>
+      <h3>失败可修复</h3>
+      <p>沙箱真实跑 install/build/test，失败时从编译日志定位责任文件、带上下文定点重生成 —— 0.4.0 就是靠修复环自愈通过的。</p>
+    </div>
+    <div class="benefit" style="--gc:var(--violet)">
+      <div class="glyph">◈</div>
+      <h3>能力可沉淀</h3>
+      <p>Skill 注册表 + 蒸馏队列：好用的生成模式回流入库，下一次编译直接复用。系统越用越聪明，而不是越用越乱。</p>
+    </div>
+  </div>
+</section>
+
+<section id="quickstart">
+  <div class="sec-head"><span class="idx">05</span><h2>如何使用：十分钟跑通全链路</h2><span class="rule"></span></div>
+  <div class="quickstart">
+    <div class="row"><span class="cmt"># 1. 克隆并安装</span><span class="cmd">git clone https://github.com/vfvincentwong2026/ai-native-dam && cd ai-native-dam && <b>pnpm install</b></span></div>
+    <div class="cmt"></div>
+    <div class="row"><span class="cmt"># 2. 配置模型路由（OpenRouter 免费模型即可起步）</span><span class="cmd">cp .env.example .env <b># 填入 MODEL_ROUTER_BASE_URL / API_KEY</b></span></div>
+    <div class="row"><span class="cmt"># 3. 启动治理网关</span><span class="cmd"><b>pnpm --filter @ai-native-dam/mcp-gateway start</b></span></div>
+    <div class="row"><span class="cmt"># 4. 跑一次真实构建：Spec 审批 → 编译 → 生成 → 沙箱验证 → 注册</span><span class="cmd"><b>pnpm build:real</b></span></div>
+    <div class="row"><span class="cmt"># 5. 启动生成的系统并登记部署</span><span class="cmd">node .dam-runs/&lt;run-id&gt;/src/server.ts && <b>node scripts/deploy-local.mjs</b></span></div>
+  </div>
+  <p style="margin-top:16px; font-size:13px; color:var(--dim); line-height:1.7">
+    详细架构决策见仓库 <a href="https://github.com/vfvincentwong2026/ai-native-dam/tree/main/docs">docs/adr</a>；
+    治理大屏上的 Skill 注册表、Spec 审批视图、蒸馏队列都是实时数据，不是截图。
+  </p>
+</section>
+
+<section id="faq" class="faq">
+  <div class="sec-head"><span class="idx">06</span><h2>常见问题</h2><span class="rule"></span></div>
+  <details open>
+    <summary>这和直接用 Cursor / Copilot 写代码有什么区别？</summary>
+    <p>那些工具优化的是"写"的效率，DAM 管的是"能不能上线"的治理：需求先审批、蓝图确定性编译、生成受预算约束、验证走可执行沙箱、注册强制溯源、部署活查登记。AI 写的每一行系统代码都在这条流水线里留痕。</p>
+  </details>
+  <details>
+    <summary>必须用指定的大模型吗？</summary>
+    <p>不需要。模型通过 C0–C3 分级路由接入，传输层是可插拔的 <code>ModelTransport</code>：OpenRouter、DeepSeek、本地 Ollama 都已验证。换模型只改环境变量，治理链路和蓝图哈希完全不受影响。</p>
+  </details>
+  <details>
+    <summary>生成的系统质量怎么保证？</summary>
+    <p>三层：① 确定性文件（server 入口、契约、建表、tsconfig）不经过 LLM；② 13 项门禁 + 沙箱真实 install/build/test；③ 失败文件定点修复环。验证不过就不允许注册，注册不了就不存在部署。</p>
+  </details>
+  <details>
+    <summary>数据会离开我的环境吗？</summary>
+    <p>治理数据存在本地 PGlite/SQLite，生成的系统默认 <code>node:sqlite</code> 零外部依赖。唯一出网的是 LLM 推理调用 —— 指向哪个端点由你配置，包括完全本地的 Ollama。</p>
+  </details>
+  <details>
+    <summary>现在是什么成熟度？</summary>
+    <p>Founding Beta：六步流水线已端到端跑通真实系统（版权到期预警台 0.4.0 → 0.5.x），部署链闭环。沙箱目前是本机无隔离运行（dev-only），Docker 隔离沙箱在 ADR 0010 路线图内。</p>
+  </details>
+  <details>
+    <summary>怎么接入我自己的业务需求？</summary>
+    <p>写一份 System Spec（实体 + 字段 + 权限 + 工作流，仓库有模板），提交审批，然后 <code>pnpm build:real</code>。流水线会带着你的 Spec 走完编译、生成、验证、注册全程。</p>
+  </details>
+</section>
+
+<div class="final">
+  <h2>下一次让 AI 替你造系统时，<br>先问它要一条溯源链。</h2>
+  <p>治理大屏上的每一个数字都来自真实运行的流水线。欢迎亲自验证。</p>
+  <div class="ctas">
+    <a class="btn btn-primary" href="/governance/">打开治理实况大屏</a>
+    <a class="btn btn-ghost" href="https://github.com/vfvincentwong2026/ai-native-dam">Star on GitHub</a>
+  </div>
+</div>
+
+<footer>
+  <span>AI-Native DAM · Governance Plane for AI-Native Assets</span>
+  <span><a href="https://github.com/vfvincentwong2026/ai-native-dam">GitHub</a> · <a href="/governance/">Governance</a> · Apache-2.0</span>
+</footer>
+
 </body>
 </html>

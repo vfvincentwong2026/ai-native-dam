@@ -18,6 +18,7 @@ import { join } from 'node:path';
 import type { SystemSpec } from '@ai-native-dam/shared-schema';
 import {
   executeBlueprint,
+  isDeterministicPath,
   materializeBuild,
   planBlueprint,
   storageNote,
@@ -506,12 +507,26 @@ export class Orchestrator {
     completer: BlueprintCompleter,
   ): Promise<CompiledBuild | undefined> {
     const files: GeneratedFile[] = [...build.files];
+    let changed = false;
     try {
       for (const path of badPaths) {
+        // Deterministic infrastructure is fixed by construction — when tsc
+        // blames the server entry's call site, the fault belongs to the
+        // route file; regenerating infra through the LLM would only drift.
+        if (isDeterministicPath(path)) continue;
         const idx = files.findIndex((f) => f.path === path);
         if (idx < 0) continue;
         const file = files[idx];
         const planned = blueprint.files.find((f) => f.path === path);
+        // Cross-file consistency is the top smoke failure: a test asserting
+        // on a route it cannot see. Include the sibling under test (test →
+        // route, route → model) so the repair can align to reality.
+        const siblingPath = path.match(/^tests\/(.+)\.test\.ts$/)
+          ? `src/routes/${path.match(/^tests\/(.+)\.test\.ts$/)![1]}.ts`
+          : path.match(/^src\/routes\/(.+)\.ts$/)
+            ? `src/models/${path.match(/^src\/routes\/(.+)\.ts$/)![1]}.ts`
+            : null;
+        const sibling = siblingPath ? files.find((f) => f.path === siblingPath) : undefined;
         const result = await completer.complete({
           runId,
           tier: file.tier,
@@ -520,17 +535,25 @@ export class Orchestrator {
             `The generated file ${path} failed the executable sandbox build. Output the corrected full file.`,
             `Purpose: ${planned?.purpose ?? file.promptSummary}`,
             `Stack: ${blueprint.stack.runtime} / ${blueprint.stack.framework} / ${storageNote(blueprint)}.`,
+            planned?.kind === 'route'
+              ? `Contract: export EXACTLY \`export const handle: RouteHandle = async (req, res, db) => { ... }\` with \`import type { RouteHandle } from '../contract.ts';\` — true when handled. The deterministic src/server.ts owns the server; no listen() here.`
+              : '',
+            planned?.kind === 'test'
+              ? `Contract: handle is async — ALWAYS \`await handle(...)\` before asserting; mock res via DamResponse shape from '../src/contract.ts' (plain objects capturing writeHead/end calls).`
+              : '',
             `Compiler/test output:\n${logTail}`,
+            sibling ? `Related file ${sibling.path} (the module under repair must align to it):\n${sibling.content}` : '',
             `Current broken content:\n${file.content}`,
             `Rules: fix ONLY what the errors blame; keep the file's role and exports stable. Output ONLY the raw corrected file content — no markdown \`\`\` fences, no leading filename line, no commentary.`,
-          ].join('\n\n'),
+          ].filter(Boolean).join('\n\n'),
         });
         files[idx] = { ...file, content: stripCodeFences(result.text, path) };
+        changed = true;
       }
     } catch {
       return undefined;
     }
-    return { ...build, files };
+    return changed ? { ...build, files } : undefined;
   }
 
   private mustGet(runId: string): BuildRun {
@@ -555,6 +578,12 @@ function failedPathsFromLog(logTail: string, build: CompiledBuild): string[] {
   for (const m of logTail.matchAll(/FAIL\s+(\S+)/g)) {
     if (known.has(m[1])) found.add(m[1]);
   }
+  // Vitest stack frames name the runtime culprit, not just the test:
+  // "❯ getAll src/models/x.ts:47:21" — a route/model that ignores the
+  // passed db can only be fixed by repairing THAT file, not the test.
+  for (const m of logTail.matchAll(/^❯\s+\S+\s+((?:src|tests)\/\S+?):\d+:\d+/gm)) {
+    if (known.has(m[1])) found.add(m[1]);
+  }
   // tsc config errors carry no (line,col): "No inputs were found in config
   // file 'D:/…/tsconfig.json'" — suffix-match the absolute path back to a
   // known build file.
@@ -564,5 +593,5 @@ function failedPathsFromLog(logTail: string, build: CompiledBuild): string[] {
       if (abs.endsWith(k)) found.add(k);
     }
   }
-  return [...found].slice(0, 4);
+  return [...found].slice(0, 5);
 }

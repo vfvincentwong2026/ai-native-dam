@@ -1,7 +1,7 @@
 {
   "server": "ai-native-dam-gateway",
   "version": "0.1.0",
-  "generated_at": "2026-11-15T14:46:30.878Z",
+  "generated_at": "2026-11-15T17:23:54.532Z",
   "skills": {
     "total": 24,
     "by_status": {
@@ -83,13 +83,20 @@
     ]
   },
   "specs": {
-    "total": 10,
+    "total": 11,
     "by_status": {
-      "generated": 8,
+      "generated": 9,
       "approved": 2
     },
     "pending_approval": [],
     "recent": [
+      {
+        "id": "spec-202154e1-07cb-49c4-95ff-2cd53bd40bb1",
+        "title": "版权到期预警台",
+        "business_domain": "operations",
+        "status": "approved",
+        "created_at": "2026-11-15T17:21:29.654Z"
+      },
       {
         "id": "spec-0644d4db-4bba-4438-8787-5e73d0792b9a",
         "title": "TradeFlow",
@@ -115,7 +122,7 @@
         "id": "spec-e20c0cda-8196-452b-bb6c-d1173e8fc223",
         "title": "版权到期预警台",
         "business_domain": "operations",
-        "status": "approved",
+        "status": "generated",
         "created_at": "2026-11-15T12:14:02.469Z"
       },
       {
@@ -138,13 +145,6 @@
         "business_domain": "operations",
         "status": "generated",
         "created_at": "2026-11-14T18:07:57.083Z"
-      },
-      {
-        "id": "spec-b909b072-5ab3-4ee1-8d9b-45eeea3d4bcd",
-        "title": "版权到期预警台",
-        "business_domain": "operations",
-        "status": "generated",
-        "created_at": "2026-11-14T17:56:12.115Z"
       }
     ],
     "list": [
@@ -181,7 +181,7 @@
       {
         "id": "spec-e20c0cda-8196-452b-bb6c-d1173e8fc223",
         "title": "版权到期预警台",
-        "status": "approved"
+        "status": "generated"
       },
       {
         "id": "spec-77e9e64d-262b-4df8-995a-ed63edcaced2",
@@ -197,6 +197,11 @@
         "id": "spec-0644d4db-4bba-4438-8787-5e73d0792b9a",
         "title": "TradeFlow",
         "status": "generated"
+      },
+      {
+        "id": "spec-202154e1-07cb-49c4-95ff-2cd53bd40bb1",
+        "title": "版权到期预警台",
+        "status": "approved"
       }
     ]
   },
@@ -210,11 +215,22 @@
     "awaiting_approval": []
   },
   "systems": {
-    "total": 8,
+    "total": 9,
     "by_status": {
-      "registered": 8
+      "registered": 9
     },
     "recent": [
+      {
+        "id": "sys-06369e1d-5bdc-42b1-a679-ed66078b0ed3",
+        "name": "版权到期预警台",
+        "version": "0.5.0",
+        "status": "registered",
+        "created_at": "2026-11-15T15:43:49.559Z",
+        "source_spec_id": "spec-e20c0cda-8196-452b-bb6c-d1173e8fc223",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
+      },
       {
         "id": "sys-d21ef785-a786-4014-b28e-9b67861261f1",
         "name": "TradeFlow",
@@ -285,17 +301,6 @@
         "created_at": "2026-11-13T10:28:20.677Z",
         "source_spec_id": "spec-96b35371-1717-4faf-99b6-f37695ab0a45",
         "source_skill_ids": []
-      },
-      {
-        "id": "sys-02030af7-83ac-4dfb-bde7-1cf1b3133176",
-        "name": "DramaPulse 榜单运营台",
-        "version": "0.1.0",
-        "status": "registered",
-        "created_at": "2026-11-13T10:25:41.139Z",
-        "source_spec_id": "spec-cb7a6416-7d79-4c8a-8468-cd07994eeda2",
-        "source_skill_ids": [
-          "operations:project-context"
-        ]
       }
     ],
     "list": [
@@ -380,6 +385,17 @@
         "created_at": "2026-11-15T14:30:52.510Z",
         "source_spec_id": "spec-0644d4db-4bba-4438-8787-5e73d0792b9a",
         "source_skill_ids": []
+      },
+      {
+        "id": "sys-06369e1d-5bdc-42b1-a679-ed66078b0ed3",
+        "name": "版权到期预警台",
+        "version": "0.5.0",
+        "status": "registered",
+        "created_at": "2026-11-15T15:43:49.559Z",
+        "source_spec_id": "spec-e20c0cda-8196-452b-bb6c-d1173e8fc223",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
       }
     ]
   },
