@@ -1,7 +1,7 @@
 {
   "server": "ai-native-dam-gateway",
   "version": "0.1.0",
-  "generated_at": "2026-11-15T09:22:23.222Z",
+  "generated_at": "2026-11-15T14:29:19.120Z",
   "skills": {
     "total": 24,
     "by_status": {
@@ -83,13 +83,34 @@
     ]
   },
   "specs": {
-    "total": 6,
+    "total": 9,
     "by_status": {
-      "generated": 5,
-      "approved": 1
+      "generated": 7,
+      "approved": 2
     },
     "pending_approval": [],
     "recent": [
+      {
+        "id": "spec-8455c718-bf93-4391-a454-e80ff380d1b3",
+        "title": "Video Batch ID · 印尼短视频二创执行体（InstallableUnit L2）",
+        "business_domain": "short-video-ecommerce",
+        "status": "approved",
+        "created_at": "2026-11-15T12:19:46.404Z"
+      },
+      {
+        "id": "spec-77e9e64d-262b-4df8-995a-ed63edcaced2",
+        "title": "Video Batch ID · 印尼短视频二创执行体（InstallableUnit L2）",
+        "business_domain": "short-video-ecommerce",
+        "status": "generated",
+        "created_at": "2026-11-15T12:19:11.887Z"
+      },
+      {
+        "id": "spec-e20c0cda-8196-452b-bb6c-d1173e8fc223",
+        "title": "版权到期预警台",
+        "business_domain": "operations",
+        "status": "approved",
+        "created_at": "2026-11-15T12:14:02.469Z"
+      },
       {
         "id": "spec-02fd91b7-64db-480a-914a-e1bc457e999b",
         "title": "版权到期预警台",
@@ -108,7 +129,7 @@
         "id": "spec-d1ad26f2-8406-4ba9-8205-33a87b516916",
         "title": "版权到期预警台",
         "business_domain": "operations",
-        "status": "approved",
+        "status": "generated",
         "created_at": "2026-11-14T18:07:57.083Z"
       },
       {
@@ -124,13 +145,53 @@
         "business_domain": "legal-tech",
         "status": "generated",
         "created_at": "2026-11-12T10:58:06.361Z"
-      },
+      }
+    ],
+    "list": [
       {
         "id": "spec-cb7a6416-7d79-4c8a-8468-cd07994eeda2",
         "title": "DramaPulse 榜单运营台",
-        "business_domain": "short-drama",
-        "status": "generated",
-        "created_at": "2026-11-12T10:58:06.332Z"
+        "status": "generated"
+      },
+      {
+        "id": "spec-96b35371-1717-4faf-99b6-f37695ab0a45",
+        "title": "LexNusa 法规监测台",
+        "status": "generated"
+      },
+      {
+        "id": "spec-b909b072-5ab3-4ee1-8d9b-45eeea3d4bcd",
+        "title": "版权到期预警台",
+        "status": "generated"
+      },
+      {
+        "id": "spec-d1ad26f2-8406-4ba9-8205-33a87b516916",
+        "title": "版权到期预警台",
+        "status": "generated"
+      },
+      {
+        "id": "spec-73e988f2-76c7-4db3-be37-bffa1ce03927",
+        "title": "版权到期预警台",
+        "status": "generated"
+      },
+      {
+        "id": "spec-02fd91b7-64db-480a-914a-e1bc457e999b",
+        "title": "版权到期预警台",
+        "status": "generated"
+      },
+      {
+        "id": "spec-e20c0cda-8196-452b-bb6c-d1173e8fc223",
+        "title": "版权到期预警台",
+        "status": "approved"
+      },
+      {
+        "id": "spec-77e9e64d-262b-4df8-995a-ed63edcaced2",
+        "title": "Video Batch ID · 印尼短视频二创执行体（InstallableUnit L2）",
+        "status": "generated"
+      },
+      {
+        "id": "spec-8455c718-bf93-4391-a454-e80ff380d1b3",
+        "title": "Video Batch ID · 印尼短视频二创执行体（InstallableUnit L2）",
+        "status": "approved"
       }
     ]
   },
@@ -144,59 +205,229 @@
     "awaiting_approval": []
   },
   "systems": {
-    "total": 5,
+    "total": 7,
     "by_status": {
-      "registered": 5
+      "registered": 7
     },
     "recent": [
+      {
+        "id": "sys-355a2799-1d9c-424b-804b-316488fbd5f4",
+        "name": "video-batch-id",
+        "version": "0.9.0",
+        "status": "registered",
+        "created_at": "2026-11-15T12:19:11.905Z",
+        "source_spec_id": "spec-77e9e64d-262b-4df8-995a-ed63edcaced2",
+        "source_skill_ids": []
+      },
+      {
+        "id": "sys-ee6543aa-3b90-4be1-9333-78df6e0cabb6",
+        "name": "版权到期预警台",
+        "version": "0.4.0",
+        "status": "registered",
+        "created_at": "2026-11-15T10:22:57.728Z",
+        "source_spec_id": "spec-d1ad26f2-8406-4ba9-8205-33a87b516916",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
+      },
       {
         "id": "sys-9c8b9060-3e0e-449d-8760-d0dbe17aecb5",
         "name": "版权到期预警台",
         "version": "0.3.0",
         "status": "registered",
-        "created_at": "2026-11-15T05:06:53.774Z"
+        "created_at": "2026-11-15T05:06:53.774Z",
+        "source_spec_id": "spec-b909b072-5ab3-4ee1-8d9b-45eeea3d4bcd",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
       },
       {
         "id": "sys-d03bb96c-7a44-432e-9cfe-007133405467",
         "name": "版权到期预警台",
         "version": "0.2.0",
         "status": "registered",
-        "created_at": "2026-11-15T03:58:32.853Z"
+        "created_at": "2026-11-15T03:58:32.853Z",
+        "source_spec_id": "spec-02fd91b7-64db-480a-914a-e1bc457e999b",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
       },
       {
         "id": "sys-c90ba564-d09a-4773-868f-d8e3c2136dc6",
         "name": "版权到期预警台",
         "version": "0.1.0",
         "status": "registered",
-        "created_at": "2026-11-14T18:11:32.482Z"
+        "created_at": "2026-11-14T18:11:32.482Z",
+        "source_spec_id": "spec-73e988f2-76c7-4db3-be37-bffa1ce03927",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
       },
       {
         "id": "sys-a136a8f7-1f12-4f79-9164-1943e33d92b5",
         "name": "LexNusa 法规监测台",
         "version": "0.1.0",
         "status": "registered",
-        "created_at": "2026-11-13T10:28:20.677Z"
+        "created_at": "2026-11-13T10:28:20.677Z",
+        "source_spec_id": "spec-96b35371-1717-4faf-99b6-f37695ab0a45",
+        "source_skill_ids": []
       },
       {
         "id": "sys-02030af7-83ac-4dfb-bde7-1cf1b3133176",
         "name": "DramaPulse 榜单运营台",
         "version": "0.1.0",
         "status": "registered",
-        "created_at": "2026-11-13T10:25:41.139Z"
+        "created_at": "2026-11-13T10:25:41.139Z",
+        "source_spec_id": "spec-cb7a6416-7d79-4c8a-8468-cd07994eeda2",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
+      }
+    ],
+    "list": [
+      {
+        "id": "sys-02030af7-83ac-4dfb-bde7-1cf1b3133176",
+        "name": "DramaPulse 榜单运营台",
+        "version": "0.1.0",
+        "status": "registered",
+        "created_at": "2026-11-13T10:25:41.139Z",
+        "source_spec_id": "spec-cb7a6416-7d79-4c8a-8468-cd07994eeda2",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
+      },
+      {
+        "id": "sys-a136a8f7-1f12-4f79-9164-1943e33d92b5",
+        "name": "LexNusa 法规监测台",
+        "version": "0.1.0",
+        "status": "registered",
+        "created_at": "2026-11-13T10:28:20.677Z",
+        "source_spec_id": "spec-96b35371-1717-4faf-99b6-f37695ab0a45",
+        "source_skill_ids": []
+      },
+      {
+        "id": "sys-c90ba564-d09a-4773-868f-d8e3c2136dc6",
+        "name": "版权到期预警台",
+        "version": "0.1.0",
+        "status": "registered",
+        "created_at": "2026-11-14T18:11:32.482Z",
+        "source_spec_id": "spec-73e988f2-76c7-4db3-be37-bffa1ce03927",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
+      },
+      {
+        "id": "sys-d03bb96c-7a44-432e-9cfe-007133405467",
+        "name": "版权到期预警台",
+        "version": "0.2.0",
+        "status": "registered",
+        "created_at": "2026-11-15T03:58:32.853Z",
+        "source_spec_id": "spec-02fd91b7-64db-480a-914a-e1bc457e999b",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
+      },
+      {
+        "id": "sys-9c8b9060-3e0e-449d-8760-d0dbe17aecb5",
+        "name": "版权到期预警台",
+        "version": "0.3.0",
+        "status": "registered",
+        "created_at": "2026-11-15T05:06:53.774Z",
+        "source_spec_id": "spec-b909b072-5ab3-4ee1-8d9b-45eeea3d4bcd",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
+      },
+      {
+        "id": "sys-ee6543aa-3b90-4be1-9333-78df6e0cabb6",
+        "name": "版权到期预警台",
+        "version": "0.4.0",
+        "status": "registered",
+        "created_at": "2026-11-15T10:22:57.728Z",
+        "source_spec_id": "spec-d1ad26f2-8406-4ba9-8205-33a87b516916",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
+      },
+      {
+        "id": "sys-355a2799-1d9c-424b-804b-316488fbd5f4",
+        "name": "video-batch-id",
+        "version": "0.9.0",
+        "status": "registered",
+        "created_at": "2026-11-15T12:19:11.905Z",
+        "source_spec_id": "spec-77e9e64d-262b-4df8-995a-ed63edcaced2",
+        "source_skill_ids": []
       }
     ]
   },
   "deployments": {
     "targets": {
-      "total": 0,
-      "by_kind": {},
-      "by_status": {}
+      "total": 2,
+      "by_kind": {
+        "onprem": 2
+      },
+      "by_status": {
+        "active": 2
+      },
+      "list": [
+        {
+          "id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
+          "name": "owner-laptop (local dev)",
+          "kind": "onprem",
+          "status": "active",
+          "region": null
+        },
+        {
+          "id": "tgt-dd27eef7-c3a1-4dfa-a374-7815b25968bc",
+          "name": "owner-laptop (Video Batch ID unit)",
+          "kind": "onprem",
+          "status": "active",
+          "region": null
+        }
+      ]
     },
     "instances": {
-      "total": 0,
-      "by_status": {},
+      "total": 2,
+      "by_status": {
+        "deployed": 2
+      },
       "attention": [],
-      "recent": []
+      "recent": [
+        {
+          "id": "inst-12982c0d-f5ca-4c79-93fa-2ba2e5f8aa77",
+          "system_id": "sys-355a2799-1d9c-424b-804b-316488fbd5f4",
+          "target_id": "tgt-dd27eef7-c3a1-4dfa-a374-7815b25968bc",
+          "version": "0.9.0",
+          "status": "deployed",
+          "last_health_at": "2026-11-15T12:19:46.423Z"
+        },
+        {
+          "id": "inst-f764b366-99f3-46b1-bfa2-3ea54fd7cc09",
+          "system_id": "sys-ee6543aa-3b90-4be1-9333-78df6e0cabb6",
+          "target_id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
+          "version": "0.4.0",
+          "status": "deployed",
+          "last_health_at": "2026-11-15T10:40:55.213Z"
+        }
+      ],
+      "list": [
+        {
+          "id": "inst-f764b366-99f3-46b1-bfa2-3ea54fd7cc09",
+          "system_id": "sys-ee6543aa-3b90-4be1-9333-78df6e0cabb6",
+          "target_id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
+          "version": "0.4.0",
+          "status": "deployed",
+          "last_health_at": "2026-11-15T10:40:55.213Z"
+        },
+        {
+          "id": "inst-12982c0d-f5ca-4c79-93fa-2ba2e5f8aa77",
+          "system_id": "sys-355a2799-1d9c-424b-804b-316488fbd5f4",
+          "target_id": "tgt-dd27eef7-c3a1-4dfa-a374-7815b25968bc",
+          "version": "0.9.0",
+          "status": "deployed",
+          "last_health_at": "2026-11-15T12:19:46.423Z"
+        }
+      ]
     }
   },
   "assets": {

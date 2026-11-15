@@ -74,6 +74,7 @@ export async function buildOverview(deps: OverviewDeps) {
       recent: byCreatedAtDesc(specs)
         .slice(0, RECENT_CAP)
         .map(s => ({ id: s.id, title: s.title, business_domain: s.businessDomain, status: s.status, created_at: s.createdAt })),
+      list: specs.map(s => ({ id: s.id, title: s.title, status: s.status })),
     },
     distillations: {
       total: distillations.length,
@@ -94,13 +95,32 @@ export async function buildOverview(deps: OverviewDeps) {
       by_status: countBy(systems, s => s.status),
       recent: byCreatedAtDesc(systems)
         .slice(0, RECENT_CAP)
-        .map(s => ({ id: s.id, name: s.name, version: s.version, status: s.status, created_at: s.createdAt })),
+        .map(s => ({
+          id: s.id,
+          name: s.name,
+          version: s.version,
+          status: s.status,
+          created_at: s.createdAt,
+          source_spec_id: s.sourceSpecId,
+          source_skill_ids: s.sourceSkillIds,
+        })),
+      /** Full compact list — powers the per-project board view. */
+      list: systems.map(s => ({
+        id: s.id,
+        name: s.name,
+        version: s.version,
+        status: s.status,
+        created_at: s.createdAt,
+        source_spec_id: s.sourceSpecId,
+        source_skill_ids: s.sourceSkillIds,
+      })),
     },
     deployments: {
       targets: {
         total: targets.length,
         by_kind: countBy(targets, t => t.kind),
         by_status: countBy(targets, t => t.status),
+        list: targets.map(t => ({ id: t.id, name: t.name, kind: t.kind, status: t.status, region: t.region })),
       },
       instances: {
         total: instances.length,
@@ -125,6 +145,14 @@ export async function buildOverview(deps: OverviewDeps) {
             status: i.status,
             last_health_at: i.lastHealthAt,
           })),
+        list: instances.map(i => ({
+          id: i.id,
+          system_id: i.systemId,
+          target_id: i.targetId,
+          version: i.version,
+          status: i.status,
+          last_health_at: i.lastHealthAt,
+        })),
       },
     },
     assets: {
