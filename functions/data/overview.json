@@ -1,7 +1,7 @@
 {
   "server": "ai-native-dam-gateway",
   "version": "0.1.0",
-  "generated_at": "2026-11-15T09:06:35.629Z",
+  "generated_at": "2026-11-15T09:22:23.222Z",
   "skills": {
     "total": 24,
     "by_status": {
@@ -14,7 +14,73 @@
       "operations": 8,
       "short_drama": 3
     },
-    "pending_approval": []
+    "pending_approval": [],
+    "recent": [
+      {
+        "id": "generic:kb-contribute",
+        "version": "0.1.0",
+        "name": "kb-contribute",
+        "domain": "generic",
+        "status": "approved",
+        "created_at": "2026-11-12T17:09:56.544Z"
+      },
+      {
+        "id": "generic:add-migration",
+        "version": "0.1.0",
+        "name": "add-migration",
+        "domain": "generic",
+        "status": "approved",
+        "created_at": "2026-11-12T17:09:56.497Z"
+      },
+      {
+        "id": "ecommerce:product-selection",
+        "version": "0.1.0",
+        "name": "product-selection",
+        "domain": "ecommerce",
+        "status": "approved",
+        "created_at": "2026-11-12T17:09:56.466Z"
+      },
+      {
+        "id": "short_drama:drama-selection",
+        "version": "0.1.0",
+        "name": "drama-selection",
+        "domain": "short_drama",
+        "status": "approved",
+        "created_at": "2026-11-12T17:09:56.457Z"
+      },
+      {
+        "id": "operations:data-summary",
+        "version": "0.1.0",
+        "name": "data-summary",
+        "domain": "operations",
+        "status": "approved",
+        "created_at": "2026-11-12T17:09:56.447Z"
+      },
+      {
+        "id": "content:content-generation",
+        "version": "0.1.0",
+        "name": "content-generation",
+        "domain": "content",
+        "status": "approved",
+        "created_at": "2026-11-12T17:09:56.437Z"
+      },
+      {
+        "id": "operations:anomaly-alerts",
+        "version": "0.1.0",
+        "name": "anomaly-alerts",
+        "domain": "operations",
+        "status": "approved",
+        "created_at": "2026-11-12T17:09:56.427Z"
+      },
+      {
+        "id": "generic:qa-handoff",
+        "version": "0.1.0",
+        "name": "qa-handoff",
+        "domain": "generic",
+        "status": "approved",
+        "created_at": "2026-11-12T14:09:01.742Z"
+      }
+    ]
   },
   "specs": {
     "total": 6,
@@ -22,7 +88,51 @@
       "generated": 5,
       "approved": 1
     },
-    "pending_approval": []
+    "pending_approval": [],
+    "recent": [
+      {
+        "id": "spec-02fd91b7-64db-480a-914a-e1bc457e999b",
+        "title": "版权到期预警台",
+        "business_domain": "operations",
+        "status": "generated",
+        "created_at": "2026-11-15T03:57:47.633Z"
+      },
+      {
+        "id": "spec-73e988f2-76c7-4db3-be37-bffa1ce03927",
+        "title": "版权到期预警台",
+        "business_domain": "operations",
+        "status": "generated",
+        "created_at": "2026-11-14T18:11:32.391Z"
+      },
+      {
+        "id": "spec-d1ad26f2-8406-4ba9-8205-33a87b516916",
+        "title": "版权到期预警台",
+        "business_domain": "operations",
+        "status": "approved",
+        "created_at": "2026-11-14T18:07:57.083Z"
+      },
+      {
+        "id": "spec-b909b072-5ab3-4ee1-8d9b-45eeea3d4bcd",
+        "title": "版权到期预警台",
+        "business_domain": "operations",
+        "status": "generated",
+        "created_at": "2026-11-14T17:56:12.115Z"
+      },
+      {
+        "id": "spec-96b35371-1717-4faf-99b6-f37695ab0a45",
+        "title": "LexNusa 法规监测台",
+        "business_domain": "legal-tech",
+        "status": "generated",
+        "created_at": "2026-11-12T10:58:06.361Z"
+      },
+      {
+        "id": "spec-cb7a6416-7d79-4c8a-8468-cd07994eeda2",
+        "title": "DramaPulse 榜单运营台",
+        "business_domain": "short-drama",
+        "status": "generated",
+        "created_at": "2026-11-12T10:58:06.332Z"
+      }
+    ]
   },
   "distillations": {
     "total": 3,
@@ -37,17 +147,56 @@
     "total": 5,
     "by_status": {
       "registered": 5
-    }
+    },
+    "recent": [
+      {
+        "id": "sys-9c8b9060-3e0e-449d-8760-d0dbe17aecb5",
+        "name": "版权到期预警台",
+        "version": "0.3.0",
+        "status": "registered",
+        "created_at": "2026-11-15T05:06:53.774Z"
+      },
+      {
+        "id": "sys-d03bb96c-7a44-432e-9cfe-007133405467",
+        "name": "版权到期预警台",
+        "version": "0.2.0",
+        "status": "registered",
+        "created_at": "2026-11-15T03:58:32.853Z"
+      },
+      {
+        "id": "sys-c90ba564-d09a-4773-868f-d8e3c2136dc6",
+        "name": "版权到期预警台",
+        "version": "0.1.0",
+        "status": "registered",
+        "created_at": "2026-11-14T18:11:32.482Z"
+      },
+      {
+        "id": "sys-a136a8f7-1f12-4f79-9164-1943e33d92b5",
+        "name": "LexNusa 法规监测台",
+        "version": "0.1.0",
+        "status": "registered",
+        "created_at": "2026-11-13T10:28:20.677Z"
+      },
+      {
+        "id": "sys-02030af7-83ac-4dfb-bde7-1cf1b3133176",
+        "name": "DramaPulse 榜单运营台",
+        "version": "0.1.0",
+        "status": "registered",
+        "created_at": "2026-11-13T10:25:41.139Z"
+      }
+    ]
   },
   "deployments": {
     "targets": {
       "total": 0,
-      "by_kind": {}
+      "by_kind": {},
+      "by_status": {}
     },
     "instances": {
       "total": 0,
       "by_status": {},
-      "attention": []
+      "attention": [],
+      "recent": []
     }
   },
   "assets": {

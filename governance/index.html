@@ -3,19 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI-Native DAM · 治理大屏</title>
-<meta name="description" content="AI-Native DAM 治理平面实况：Skill 注册表、System Spec 审批、蒸馏决策队列、部署实例健康。">
+<title>AI-Native DAM · 治理中枢大屏</title>
+<meta name="description" content="AI-Native DAM 治理平面实况大屏：Skill 注册表、System Spec 审批、蒸馏决策队列、部署实例健康、资产权利。">
 <style>
   :root {
-    --bg: #0a0e14;
-    --panel: #11161f;
-    --panel-border: #1e2733;
-    --ink: #e6edf3;
-    --ink-dim: #8b98a9;
-    --accent: #39d353;
-    --warn: #d29922;
-    --danger: #f85149;
-    --info: #58a6ff;
+    --bg: #070b12;
+    --panel: rgba(17, 24, 36, 0.82);
+    --line: #1c2635;
+    --ink: #e8eef6;
+    --dim: #7d8ca3;
+    --green: #2ee59d;
+    --amber: #f0b429;
+    --red: #ff5c6c;
+    --blue: #4fa3ff;
+    --violet: #9d7bff;
+    --cyan: #38d5e8;
     --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -24,201 +26,362 @@
     color: var(--ink);
     font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     min-height: 100vh;
+    background-image:
+      radial-gradient(900px 500px at 85% -10%, rgba(46, 229, 157, 0.07), transparent 60%),
+      radial-gradient(800px 500px at 0% 110%, rgba(79, 163, 255, 0.06), transparent 60%),
+      linear-gradient(rgba(28, 38, 53, 0.35) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(28, 38, 53, 0.35) 1px, transparent 1px);
+    background-size: auto, auto, 44px 44px, 44px 44px;
   }
   header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    flex-wrap: wrap; gap: 8px;
-    padding: 28px 32px 20px;
-    border-bottom: 1px solid var(--panel-border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+    padding: 22px 36px 18px;
+    border-bottom: 1px solid var(--line);
   }
-  header h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.04em; }
-  header h1 span { color: var(--accent); font-family: var(--mono); font-weight: 500; }
-  header .meta { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand .logo {
+    width: 38px; height: 38px; border-radius: 9px;
+    background: linear-gradient(135deg, rgba(46,229,157,.22), rgba(79,163,255,.18));
+    border: 1px solid rgba(46,229,157,.4);
+    display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 700; color: var(--green); font-size: 15px;
+    box-shadow: 0 0 18px rgba(46,229,157,.18);
+  }
+  .brand h1 { font-size: 19px; font-weight: 650; letter-spacing: .05em; }
+  .brand h1 span { color: var(--green); font-family: var(--mono); font-weight: 600; }
+  .brand .sub { font-size: 11px; color: var(--dim); letter-spacing: .22em; text-transform: uppercase; margin-top: 2px; }
+  .head-meta { text-align: right; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+  .head-meta .clock { font-size: 20px; color: var(--ink); letter-spacing: .06em; }
+  .pulse { display: inline-flex; align-items: center; gap: 7px; margin-top: 4px; }
+  .pulse i {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 0 0 rgba(46,229,157,.5); animation: pulse 2.4s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(46,229,157,.45); }
+    70% { box-shadow: 0 0 0 9px rgba(46,229,157,0); }
+    100% { box-shadow: 0 0 0 0 rgba(46,229,157,0); }
+  }
+
+  .kpis {
+    display: grid; gap: 14px; padding: 22px 36px 6px;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    max-width: 1680px; margin: 0 auto;
+  }
+  .kpi {
+    position: relative; overflow: hidden;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px 14px;
+  }
+  .kpi::after {
+    content: ""; position: absolute; inset: auto 0 0 0; height: 2px;
+    background: linear-gradient(90deg, var(--kc, var(--green)), transparent);
+    opacity: .8;
+  }
+  .kpi .label { font-size: 11px; letter-spacing: .18em; color: var(--dim); text-transform: uppercase; }
+  .kpi .num { font-family: var(--mono); font-size: 38px; font-weight: 600; line-height: 1.15; color: var(--kc, var(--ink)); }
+  .kpi .hint { font-size: 11.5px; color: var(--dim); font-family: var(--mono); }
+
   main {
-    display: grid; gap: 20px;
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    padding: 24px 32px 40px;
-    max-width: 1440px; margin: 0 auto;
+    display: grid; gap: 16px; padding: 18px 36px 34px;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    max-width: 1680px; margin: 0 auto;
   }
   .panel {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    padding: 18px 20px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px; backdrop-filter: blur(4px);
+    display: flex; flex-direction: column; min-height: 300px;
   }
-  .panel h2 {
-    font-size: 12px; font-weight: 600; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--ink-dim);
-    margin-bottom: 14px;
+  .panel > h2 {
+    font-size: 12px; font-weight: 650; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 16px;
     display: flex; justify-content: space-between; align-items: baseline;
   }
-  .panel h2 .total { font-family: var(--mono); font-size: 22px; color: var(--ink); letter-spacing: 0; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
-  .chip {
-    font-family: var(--mono); font-size: 12px;
-    padding: 4px 10px; border-radius: 999px;
-    border: 1px solid var(--panel-border);
-    color: var(--ink-dim);
+  .panel > h2 .total { font-family: var(--mono); font-size: 24px; color: var(--ink); letter-spacing: 0; }
+  .panel > h2 .total small { font-size: 11px; color: var(--dim); margin-left: 6px; }
+
+  .split { display: flex; gap: 20px; align-items: center; }
+  .donut-wrap { position: relative; flex-shrink: 0; }
+  .donut-wrap .center {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
   }
-  .chip b { color: var(--ink); font-weight: 600; }
-  .chip.ok b { color: var(--accent); }
-  .chip.warn b { color: var(--warn); }
-  .chip.danger b { color: var(--danger); }
-  .chip.info b { color: var(--info); }
-  ul.rows { list-style: none; margin-top: 10px; }
+  .donut-wrap .center b { font-family: var(--mono); font-size: 26px; display: block; }
+  .donut-wrap .center span { font-size: 10.5px; color: var(--dim); letter-spacing: .12em; }
+  .legend { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  .legend .row {
+    display: flex; align-items: center; gap: 9px; font-size: 12.5px;
+    font-family: var(--mono);
+  }
+  .legend .dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+  .legend .k { color: var(--dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .legend .v { color: var(--ink); font-weight: 600; }
+
+  .bars { display: flex; flex-direction: column; gap: 9px; margin-top: 16px; }
+  .bars .brow { display: grid; grid-template-columns: 110px 1fr 30px; gap: 10px; align-items: center; font-size: 12px; font-family: var(--mono); }
+  .bars .brow .k { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bars .track { height: 7px; background: rgba(28,38,53,.8); border-radius: 4px; overflow: hidden; }
+  .bars .fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--blue), var(--cyan)); transition: width .8s cubic-bezier(.2,.8,.2,1); }
+  .bars .v { text-align: right; color: var(--ink); }
+
+  .sect {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim);
+    margin: 18px 0 4px; display: flex; align-items: center; gap: 8px;
+  }
+  .sect::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  ul.rows { list-style: none; }
   ul.rows li {
-    display: flex; justify-content: space-between; gap: 12px;
-    padding: 8px 0; border-top: 1px dashed var(--panel-border);
-    font-size: 13px;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 8.5px 0; border-bottom: 1px dashed rgba(28,38,53,.9); font-size: 13px;
   }
-  ul.rows li .id { font-family: var(--mono); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  ul.rows li .sub { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); flex-shrink: 0; }
-  .empty { font-size: 13px; color: var(--ink-dim); padding: 8px 0; border-top: 1px dashed var(--panel-border); }
-  .error {
-    margin: 24px 32px; padding: 16px 20px;
-    border: 1px solid var(--danger); border-radius: 8px;
-    color: var(--danger); font-family: var(--mono); font-size: 13px;
+  ul.rows li:last-child { border-bottom: none; }
+  ul.rows .id { font-family: var(--mono); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  ul.rows .id small { color: var(--dim); margin-left: 8px; font-size: 11px; }
+  .tag {
+    font-family: var(--mono); font-size: 10.5px; padding: 2.5px 9px; border-radius: 999px;
+    border: 1px solid; flex-shrink: 0; letter-spacing: .04em;
   }
+  .empty { font-size: 12.5px; color: var(--dim); padding: 10px 0; font-family: var(--mono); }
+  .error { margin: 24px 36px; padding: 16px 20px; border: 1px solid var(--red); border-radius: 10px; color: var(--red); font-family: var(--mono); font-size: 13px; }
   footer {
-    padding: 16px 32px 28px; color: var(--ink-dim);
-    font-family: var(--mono); font-size: 11px;
-    border-top: 1px solid var(--panel-border);
+    padding: 14px 36px 26px; color: var(--dim); font-family: var(--mono); font-size: 11px;
+    border-top: 1px solid var(--line); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
   }
+  @media (max-width: 560px) { header, .kpis, main, footer { padding-left: 18px; padding-right: 18px; } }
 </style>
 </head>
 <body>
 <header>
-  <h1><span>AI-Native DAM</span> · 治理大屏 Governance Overview</h1>
-  <div class="meta" id="meta">loading…</div>
+  <div class="brand">
+    <div class="logo">D</div>
+    <div>
+      <h1><span>AI-Native DAM</span> · 治理中枢</h1>
+      <div class="sub">Governance Command Overview</div>
+    </div>
+  </div>
+  <div class="head-meta">
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="pulse"><i></i><span id="meta">snapshot syncing…</span></div>
+  </div>
 </header>
+
 <div id="error"></div>
+
+<section class="kpis" id="kpis" style="display:none">
+  <div class="kpi" style="--kc:var(--green)"><div class="label">Skills 注册</div><div class="num" id="k-skills">–</div><div class="hint" id="k-skills-h"></div></div>
+  <div class="kpi" style="--kc:var(--blue)"><div class="label">System Specs</div><div class="num" id="k-specs">–</div><div class="hint" id="k-specs-h"></div></div>
+  <div class="kpi" style="--kc:var(--violet)"><div class="label">生成的系统</div><div class="num" id="k-systems">–</div><div class="hint" id="k-systems-h"></div></div>
+  <div class="kpi" style="--kc:var(--amber)"><div class="label">蒸馏请求</div><div class="num" id="k-distill">–</div><div class="hint" id="k-distill-h"></div></div>
+  <div class="kpi" style="--kc:var(--cyan)"><div class="label">部署实例</div><div class="num" id="k-inst">–</div><div class="hint" id="k-inst-h"></div></div>
+  <div class="kpi" style="--kc:var(--ink)"><div class="label">受治理资产</div><div class="num" id="k-assets">–</div><div class="hint" id="k-assets-h"></div></div>
+</section>
+
 <main id="main" style="display:none">
-  <section class="panel" id="p-skills">
-    <h2>Skill 注册表 <span class="total" data-total></span></h2>
-    <div class="chips" data-chips></div>
-    <h2 style="margin-top:14px">待审批</h2>
-    <ul class="rows" data-list="pending_approval"></ul>
+  <section class="panel">
+    <h2>Skill 注册表 <span class="total" id="t-skills"></span></h2>
+    <div class="split">
+      <div class="donut-wrap" id="d-skills"></div>
+      <div class="legend" id="l-skills"></div>
+    </div>
+    <div class="sect">域分布 Domain</div>
+    <div class="bars" id="b-domains"></div>
+    <div class="sect">待审批 Pending</div>
+    <ul class="rows" id="r-skills-pending"></ul>
+    <div class="sect">最近动态 Recent</div>
+    <ul class="rows" id="r-skills-recent"></ul>
   </section>
-  <section class="panel" id="p-specs">
-    <h2>System Spec <span class="total" data-total></span></h2>
-    <div class="chips" data-chips></div>
-    <h2 style="margin-top:14px">待审批</h2>
-    <ul class="rows" data-list="pending_approval"></ul>
+
+  <section class="panel">
+    <h2>System Spec 审批 <span class="total" id="t-specs"></span></h2>
+    <div class="split">
+      <div class="donut-wrap" id="d-specs"></div>
+      <div class="legend" id="l-specs"></div>
+    </div>
+    <div class="sect">待审批 Pending</div>
+    <ul class="rows" id="r-specs-pending"></ul>
+    <div class="sect">最近动态 Recent</div>
+    <ul class="rows" id="r-specs-recent"></ul>
   </section>
-  <section class="panel" id="p-distill">
-    <h2>蒸馏决策队列 <span class="total" data-total></span></h2>
-    <div class="chips" data-chips></div>
-    <h2 style="margin-top:14px">待人工裁决</h2>
-    <ul class="rows" data-list="awaiting_approval"></ul>
+
+  <section class="panel">
+    <h2>蒸馏决策队列 <span class="total" id="t-distill"></span></h2>
+    <div class="split">
+      <div class="donut-wrap" id="d-distill"></div>
+      <div class="legend" id="l-distill"></div>
+    </div>
+    <div class="sect">待人工裁决 Awaiting</div>
+    <ul class="rows" id="r-distill-awaiting"></ul>
   </section>
-  <section class="panel" id="p-deploy">
-    <h2>部署平面 <span class="total" data-total></span></h2>
-    <div class="chips" data-chips></div>
-    <h2 style="margin-top:14px">需要关注（degraded / offline）</h2>
-    <ul class="rows" data-list="attention"></ul>
+
+  <section class="panel">
+    <h2>部署平面 Deployment <span class="total" id="t-inst"></span></h2>
+    <div class="split">
+      <div class="donut-wrap" id="d-inst"></div>
+      <div class="legend" id="l-inst"></div>
+    </div>
+    <div class="sect">Target 类型</div>
+    <div class="bars" id="b-targets"></div>
+    <div class="sect">需要关注 Attention</div>
+    <ul class="rows" id="r-inst-attention"></ul>
+    <div class="sect">最近实例 Recent</div>
+    <ul class="rows" id="r-inst-recent"></ul>
   </section>
-  <section class="panel" id="p-assets">
-    <h2>资产与权利 <span class="total" data-total></span></h2>
-    <div class="chips" data-chips></div>
+
+  <section class="panel">
+    <h2>资产与权利 Assets &amp; Rights <span class="total" id="t-assets"></span></h2>
+    <div class="sect">权利状态 Rights Status</div>
+    <div class="bars" id="b-rights"></div>
+    <div class="sect">生成的系统 Systems</div>
+    <ul class="rows" id="r-systems-recent"></ul>
   </section>
-  <section class="panel" id="p-systems">
-    <h2>生成的系统 <span class="total" data-total></span></h2>
-    <div class="chips" data-chips></div>
+
+  <section class="panel">
+    <h2>用量与蒸馏来源 Usage <span class="total" id="t-usage"></span></h2>
+    <div class="sect">说明</div>
+    <div class="empty" style="line-height:1.8">
+      usage_records 累计 <b id="usage-n" style="color:var(--ink)">0</b> 条；用量达到阈值（默认 20 次）的技能自动进入蒸馏队列，经人工裁决后才允许训练。<br><br>
+      本页为只读快照视图，数据源：DAM 网关 <span style="color:var(--blue)">GET /overview</span>，由 sync 任务定时刷新。
+    </div>
   </section>
 </main>
+
 <footer>
-  AI-Native DAM governance plane · snapshot sync · read-only public view ·
+  <span>AI-Native DAM governance plane · read-only public snapshot</span>
   <span id="foot-src"></span>
 </footer>
-<script>
-const STATUS_CLASS = {
-  approved: 'ok', active: 'ok', healthy: 'ok', completed: 'ok', Cleared: 'ok', deployed: 'ok',
-  pending_approval: 'warn', awaiting_approval: 'warn', Pending: 'warn', queued: 'warn', draft: 'warn',
-  degraded: 'danger', offline: 'danger', revoked: 'danger', failed: 'danger', rejected: 'danger', Restricted: 'danger', Expired: 'danger',
-  training: 'info', generated: 'info', registered: 'info', Restricted_: 'info'
-};
 
-function chips(el, obj) {
-  el.innerHTML = '';
-  const entries = Object.entries(obj || {});
-  if (!entries.length) { el.innerHTML = '<span class="chip">暂无数据</span>'; return; }
-  for (const [k, v] of entries) {
-    const c = document.createElement('span');
-    c.className = 'chip ' + (STATUS_CLASS[k] || '');
-    c.innerHTML = k + ' <b>' + v + '</b>';
-    el.appendChild(c);
+<script>
+const COLORS = {
+  approved: '#2ee59d', active: '#2ee59d', completed: '#2ee59d', Cleared: '#2ee59d', deployed: '#2ee59d', healthy: '#2ee59d', generated: '#2ee59d',
+  pending_approval: '#f0b429', awaiting_approval: '#f0b429', Pending: '#f0b429', queued: '#f0b429', draft: '#f0b429',
+  revoked: '#ff5c6c', failed: '#ff5c6c', rejected: '#ff5c6c', degraded: '#ff5c6c', offline: '#ff5c6c', Restricted: '#ff5c6c', Expired: '#ff5c6c',
+  training: '#4fa3ff', registered: '#4fa3ff',
+};
+const FALLBACK = ['#9d7bff', '#38d5e8', '#4fa3ff', '#f0b429', '#2ee59d', '#ff5c6c'];
+const color = k => COLORS[k] || FALLBACK[Math.abs([...String(k)].reduce((a, c) => a + c.charCodeAt(0), 0)) % FALLBACK.length];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function donut(elId, legendId, data, centerLabel) {
+  const el = document.getElementById(elId), lg = document.getElementById(legendId);
+  const entries = Object.entries(data || {}).filter(([, v]) => v > 0);
+  const total = entries.reduce((a, [, v]) => a + v, 0);
+  const R = 52, C = 2 * Math.PI * R;
+  let svg = `<svg width="132" height="132" viewBox="0 0 132 132"><circle cx="66" cy="66" r="${R}" fill="none" stroke="#1c2635" stroke-width="13"/>`;
+  let off = 0;
+  lg.innerHTML = '';
+  if (!entries.length) {
+    lg.innerHTML = '<div class="empty">暂无数据</div>';
   }
+  entries.forEach(([k, v]) => {
+    const frac = total ? v / total : 0;
+    svg += `<circle cx="66" cy="66" r="${R}" fill="none" stroke="${color(k)}" stroke-width="13"
+      stroke-dasharray="${(frac * C).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off * C).toFixed(2)}"
+      transform="rotate(-90 66 66)" stroke-linecap="butt"/>`;
+    off += frac;
+    lg.innerHTML += `<div class="row"><span class="dot" style="background:${color(k)}"></span><span class="k">${esc(k)}</span><span class="v">${v}</span></div>`;
+  });
+  svg += '</svg>';
+  el.innerHTML = svg + `<div class="center"><div><b>${total}</b><span>${esc(centerLabel)}</span></div></div>`;
 }
 
-function rows(panel, key, items, fmt) {
-  const ul = panel.querySelector('[data-list="' + key + '"]');
-  if (!ul) return;
+function bars(elId, data) {
+  const el = document.getElementById(elId);
+  const entries = Object.entries(data || {});
+  const max = Math.max(1, ...entries.map(([, v]) => v));
+  el.innerHTML = entries.length ? '' : '<div class="empty">暂无数据</div>';
+  entries.sort((a, b) => b[1] - a[1]).forEach(([k, v]) => {
+    el.innerHTML += `<div class="brow"><span class="k">${esc(k)}</span>
+      <span class="track"><span class="fill" style="width:${(v / max * 100).toFixed(1)}%"></span></span>
+      <span class="v">${v}</span></div>`;
+  });
+}
+
+function rows(elId, items, fmt, emptyText) {
+  const ul = document.getElementById(elId);
   ul.innerHTML = '';
   if (!items || !items.length) {
-    ul.innerHTML = '<li class="empty">无 — 队列已清空 ✓</li>';
+    ul.innerHTML = `<li class="empty">${emptyText || '无 — 队列已清空 ✓'}</li>`;
     return;
   }
   for (const it of items) {
     const li = document.createElement('li');
-    const a = document.createElement('span'); a.className = 'id'; a.textContent = fmt.main(it);
-    const b = document.createElement('span'); b.className = 'sub'; b.textContent = fmt.sub(it);
-    li.appendChild(a); li.appendChild(b);
+    li.innerHTML = `<span class="id">${esc(fmt.main(it))}<small>${esc(fmt.sub(it))}</small></span>` +
+      (fmt.tag ? `<span class="tag" style="color:${color(fmt.tag(it))};border-color:${color(fmt.tag(it))}55">${esc(fmt.tag(it))}</span>` : '');
     ul.appendChild(li);
   }
 }
 
-function fill(panelId, section, listFmt) {
-  const p = document.getElementById(panelId);
-  p.querySelector('[data-total]').textContent = section.total ?? 0;
-  chips(p.querySelector('[data-chips]'), section.by_status || section.by_kind || section.by_rights_status);
-  if (listFmt) {
-    for (const key of Object.keys(listFmt)) rows(p, key, section[key], listFmt[key]);
-  }
-}
+const day = s => (s || '').slice(0, 10);
 
 async function load() {
   const res = await fetch('/api/overview', { cache: 'no-store' });
   if (!res.ok) throw new Error('/api/overview → HTTP ' + res.status);
   const o = await res.json();
 
-  document.getElementById('meta').textContent =
-    'snapshot ' + (o.generated_at || '?') + ' · gateway ' + (o.version || '?');
+  document.getElementById('meta').textContent = 'snapshot ' + (o.generated_at || '?');
 
-  fill('p-skills', o.skills, {
-    pending_approval: { main: s => s.id + '@' + s.version, sub: s => s.domain }
-  });
-  fill('p-specs', o.specs, {
-    pending_approval: { main: s => s.title || s.id, sub: s => s.business_domain }
-  });
-  fill('p-distill', o.distillations, {
-    awaiting_approval: { main: d => d.source_skill_id, sub: d => 'uses ' + d.usage_count + '/' + d.threshold }
-  });
+  // KPI strip
+  const set = (id, h, num, hint) => { document.getElementById(id).textContent = num; document.getElementById(h).textContent = hint; };
+  set('k-skills', 'k-skills-h', o.skills.total, `${o.skills.by_status.approved || 0} approved · ${o.skills.by_status.pending_approval || 0} pending`);
+  set('k-specs', 'k-specs-h', o.specs.total, `${o.specs.by_status.approved || 0} approved · ${o.specs.by_status.generated || 0} generated`);
+  set('k-systems', 'k-systems-h', o.systems.total, `${o.systems.by_status.registered || 0} registered`);
+  set('k-distill', 'k-distill-h', o.distillations.total, `${o.distillations.by_status.awaiting_approval || 0} awaiting`);
+  set('k-inst', 'k-inst-h', o.deployments.instances.total, `${o.deployments.targets.total} targets · ${o.deployments.instances.by_status.degraded || 0} degraded`);
+  set('k-assets', 'k-assets-h', o.assets.total, `${o.assets.with_rights} with rights · ${o.usage.total_records} usage`);
 
-  const dp = document.getElementById('p-deploy');
-  dp.querySelector('[data-total]').textContent = o.deployments.instances.total;
-  chips(dp.querySelector('[data-chips]'), o.deployments.instances.by_status);
-  rows(dp, 'attention', o.deployments.instances.attention, {
-    main: i => i.system_id + ' @ ' + i.target_id, sub: i => i.status
-  });
+  // Skills
+  document.getElementById('t-skills').innerHTML = o.skills.total + '<small>skills</small>';
+  donut('d-skills', 'l-skills', o.skills.by_status, 'skills');
+  bars('b-domains', o.skills.by_domain);
+  rows('r-skills-pending', o.skills.pending_approval, { main: s => s.id + '@' + s.version, sub: s => s.domain });
+  rows('r-skills-recent', o.skills.recent, { main: s => s.id + '@' + s.version, sub: s => day(s.created_at), tag: s => s.status }, '暂无记录');
 
-  fill('p-assets', {
-    total: o.assets.total,
-    by_rights_status: Object.assign({ 'with rights': o.assets.with_rights }, o.assets.by_rights_status)
-  });
-  fill('p-systems', o.systems);
+  // Specs
+  document.getElementById('t-specs').innerHTML = o.specs.total + '<small>specs</small>';
+  donut('d-specs', 'l-specs', o.specs.by_status, 'specs');
+  rows('r-specs-pending', o.specs.pending_approval, { main: s => s.title || s.id, sub: s => s.business_domain });
+  rows('r-specs-recent', o.specs.recent, { main: s => s.title || s.id, sub: s => day(s.created_at), tag: s => s.status }, '暂无记录');
 
-  document.getElementById('foot-src').textContent = 'source: ' + (o.server || 'ai-native-dam-gateway');
+  // Distillations
+  document.getElementById('t-distill').innerHTML = o.distillations.total + '<small>requests</small>';
+  donut('d-distill', 'l-distill', o.distillations.by_status, 'requests');
+  rows('r-distill-awaiting', o.distillations.awaiting_approval, { main: d => d.source_skill_id, sub: d => 'uses ' + d.usage_count + '/' + d.threshold });
+
+  // Deployments
+  document.getElementById('t-inst').innerHTML = o.deployments.instances.total + '<small>instances</small>';
+  donut('d-inst', 'l-inst', o.deployments.instances.by_status, 'instances');
+  bars('b-targets', o.deployments.targets.by_kind);
+  rows('r-inst-attention', o.deployments.instances.attention, { main: i => i.system_id, sub: i => i.target_id, tag: i => i.status });
+  rows('r-inst-recent', o.deployments.instances.recent, { main: i => i.system_id + '@' + i.version, sub: i => i.target_id, tag: i => i.status }, '暂无实例');
+
+  // Assets & systems
+  document.getElementById('t-assets').innerHTML = o.assets.total + '<small>assets</small>';
+  bars('b-rights', o.assets.by_rights_status);
+  rows('r-systems-recent', o.systems.recent, { main: s => s.name + '@' + s.version, sub: s => day(s.created_at), tag: s => s.status }, '暂无记录');
+
+  // Usage
+  document.getElementById('t-usage').innerHTML = o.usage.total_records + '<small>records</small>';
+  document.getElementById('usage-n').textContent = o.usage.total_records;
+
+  document.getElementById('foot-src').textContent = 'source: ' + (o.server || 'gateway') + ' v' + (o.version || '?');
+  document.getElementById('kpis').style.display = '';
   document.getElementById('main').style.display = '';
 }
 
 function showError(e) {
-  document.getElementById('error').innerHTML = '';
+  const box = document.getElementById('error');
+  box.innerHTML = '';
   const d = document.createElement('div');
   d.className = 'error';
   d.textContent = '快照加载失败：' + e.message;
-  document.getElementById('error').appendChild(d);
+  box.appendChild(d);
 }
 
+function tickClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+}
+tickClock();
+setInterval(tickClock, 1000);
 load().catch(showError);
 setInterval(() => load().catch(showError), 60000);
 </script>

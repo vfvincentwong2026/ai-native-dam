@@ -162,4 +162,19 @@ describe('GET /overview', () => {
       expect.objectContaining({ id: 'inst-0001', status: 'degraded' }),
     ]);
   });
+
+  it('includes recent-activity lists for the dashboard', async () => {
+    const res = await getOverview('read-token');
+    const o = res.body;
+
+    expect(o.skills.recent).toHaveLength(2);
+    expect(o.skills.recent[0]).toEqual(
+      expect.objectContaining({ id: expect.any(String), status: expect.any(String), created_at: expect.any(String) }),
+    );
+    expect(o.systems.recent).toEqual([]);
+    expect(o.deployments.instances.recent).toEqual([
+      expect.objectContaining({ id: 'inst-0001', version: '0.1.0', status: 'degraded' }),
+    ]);
+    expect(o.deployments.targets.by_status).toEqual({ active: 1 });
+  });
 });

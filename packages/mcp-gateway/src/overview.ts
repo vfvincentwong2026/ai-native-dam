@@ -28,6 +28,11 @@ function countBy<T>(items: readonly T[], key: (item: T) => string): Record<strin
 }
 
 const LIST_CAP = 20;
+const RECENT_CAP = 8;
+
+function byCreatedAtDesc<T extends { createdAt: string }>(items: readonly T[]): T[] {
+  return [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
 
 export async function buildOverview(deps: OverviewDeps) {
   const { store, skillStore } = deps;
@@ -55,6 +60,9 @@ export async function buildOverview(deps: OverviewDeps) {
         .filter(s => s.status === 'pending_approval')
         .slice(0, LIST_CAP)
         .map(s => ({ id: s.id, version: s.version, name: s.name, domain: s.domain, created_at: s.createdAt })),
+      recent: byCreatedAtDesc(skills)
+        .slice(0, RECENT_CAP)
+        .map(s => ({ id: s.id, version: s.version, name: s.name, domain: s.domain, status: s.status, created_at: s.createdAt })),
     },
     specs: {
       total: specs.length,
@@ -63,6 +71,9 @@ export async function buildOverview(deps: OverviewDeps) {
         .filter(s => s.status === 'pending_approval')
         .slice(0, LIST_CAP)
         .map(s => ({ id: s.id, title: s.title, business_domain: s.businessDomain, created_at: s.createdAt })),
+      recent: byCreatedAtDesc(specs)
+        .slice(0, RECENT_CAP)
+        .map(s => ({ id: s.id, title: s.title, business_domain: s.businessDomain, status: s.status, created_at: s.createdAt })),
     },
     distillations: {
       total: distillations.length,
@@ -81,9 +92,16 @@ export async function buildOverview(deps: OverviewDeps) {
     systems: {
       total: systems.length,
       by_status: countBy(systems, s => s.status),
+      recent: byCreatedAtDesc(systems)
+        .slice(0, RECENT_CAP)
+        .map(s => ({ id: s.id, name: s.name, version: s.version, status: s.status, created_at: s.createdAt })),
     },
     deployments: {
-      targets: { total: targets.length, by_kind: countBy(targets, t => t.kind) },
+      targets: {
+        total: targets.length,
+        by_kind: countBy(targets, t => t.kind),
+        by_status: countBy(targets, t => t.status),
+      },
       instances: {
         total: instances.length,
         by_status: countBy(instances, i => i.status),
@@ -94,6 +112,16 @@ export async function buildOverview(deps: OverviewDeps) {
             id: i.id,
             system_id: i.systemId,
             target_id: i.targetId,
+            status: i.status,
+            last_health_at: i.lastHealthAt,
+          })),
+        recent: byCreatedAtDesc(instances)
+          .slice(0, RECENT_CAP)
+          .map(i => ({
+            id: i.id,
+            system_id: i.systemId,
+            target_id: i.targetId,
+            version: i.version,
             status: i.status,
             last_health_at: i.lastHealthAt,
           })),
