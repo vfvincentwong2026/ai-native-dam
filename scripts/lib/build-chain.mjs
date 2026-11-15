@@ -136,7 +136,9 @@ export async function findExisting(callTool, name, version) {
 /** Reuse a matching draft spec, else draft a new one; submit when draft. */
 export async function ensureApprovedSpec(callTool, log, { title, provenanceSkill, specArgs }) {
   const found = await callTool('search_specs', { query: title, limit: 10 });
-  let specId = found.specs.find((s) => s.title === title && s.status === 'draft')?.id;
+  // Reuse a draft (submit it) or an approved-but-ungenerated spec (a
+  // previous attempt may have died mid-compile after approval).
+  let specId = found.specs.find((s) => s.title === title && (s.status === 'draft' || s.status === 'approved'))?.id;
   if (!specId) {
     const { skills } = await callTool('search_skills', { only_approved: true });
     const provenance = skills.some((s) => s.id === provenanceSkill)

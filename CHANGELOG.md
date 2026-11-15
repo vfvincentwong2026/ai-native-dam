@@ -44,10 +44,13 @@ versioning follows [Semantic Versioning](https://semver.org/).
   LLM egress: compilation routes through `ModelRouter` (tier map + run
   budget breakers via env) over the OpenAI-compatible endpoint configured
   in `.env` (`MODEL_ROUTER_BASE_URL` / `MODEL_ROUTER_API_KEY`, both
-  documented in `.env.example`). Prints the router ledger (calls, tokens)
-  and a peek at the generated code. First live run: 9 calls, 3 629 tokens,
-  0 failures, verify gate 9/9, registered as `@0.2.0` with the full
-  four-level traceability chain.
+  documented in `.env.example`; defaults and the example lineup use
+  OpenRouter free-tier `:free` models — zero cost). `BUILD_SYSTEM_VERSION`
+  selects the version to register. Prints the router ledger (calls, tokens)
+  and a peek at the generated code. First live runs: stub-paid 9 calls /
+  3 629 tokens (gpt-4o-mini) and a full free-tier run (nvidia / cohere
+  `:free` lineup), both verify-gate 9/9 with the full four-level
+  traceability chain.
 - `pnpm smoke:builder` (`scripts/build-smoke.mjs`) — an end-to-end smoke of
   the ADR 0010 chain against a real PGlite store: boots the gateway
   in-process (own tokens, random port), walks spec approval → blueprint

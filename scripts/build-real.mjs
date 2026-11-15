@@ -14,9 +14,11 @@
  *   MODEL_ROUTER_API_KEY=sk-or-…
  *
  * Optional overrides:
- *   MODEL_TIER_C0..C3        concrete model per tier (default: openai/gpt-4o-mini)
+ *   MODEL_TIER_C0..C3        concrete model per tier (default: cohere/north-mini-code:free;
+ *                            see .env.example for a free-tier per-tier lineup)
  *   MODEL_RUN_MAX_CALLS      budget breaker (default 25)
  *   MODEL_RUN_MAX_TOKENS     budget breaker (default 200000)
+ *   BUILD_SYSTEM_VERSION     version to register (default 0.2.0)
  *   DAM_GATEWAY_URL          resident gateway (default http://127.0.0.1:8080)
  *   DAM_PG_DATA_DIR          embedded store when no gateway answers
  *
@@ -40,9 +42,9 @@ import {
 
 const SPEC_TITLE = '版权到期预警台';
 const SYSTEM_NAME = '版权到期预警台';
-const SYSTEM_VERSION = '0.2.0'; // 0.1.0 is the smoke's stub build
+const SYSTEM_VERSION = process.env.BUILD_SYSTEM_VERSION ?? '0.2.0'; // 0.1.0 is the smoke's stub build
 const PROVENANCE_SKILL = 'operations:project-context';
-const DEFAULT_MODEL = 'openai/gpt-4o-mini';
+const DEFAULT_MODEL = 'cohere/north-mini-code:free';
 
 const log = (msg) => console.log(`[real] ${msg}`);
 const fail = (msg) => {
