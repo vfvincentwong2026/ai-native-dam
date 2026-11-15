@@ -1,0 +1,15 @@
+name = "ai-native-dam-gateway"
+main = "src/worker.ts"
+compatibility_date = "2026-11-01"
+
+[observability]
+enabled = true
+
+# 全局单例 Durable Object：Skill Registry（DO SQLite）+ 审批挑战的全世界一致性归属
+[[durable_objects.bindings]]
+name = "REGISTRY_HUB"
+class_name = "RegistryHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RegistryHub"]
