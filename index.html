@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI-Native DAM — 让 AI 在治理框架内造系统</title>
-<meta name="description" content="AI-Native DAM 是 AI 原生资产的治理平面：从一份审批过的 System Spec 出发，确定性编译蓝图、受预算约束地生成代码、13 项门禁验证、注册溯源、一键部署。全程可审计、可回溯、可复现。">
+<title>AI-Native DAM — 你提需求，AI 造系统，全程可审计</title>
+<meta name="description" content="AI-Native DAM：你提需求、批规格，流水线自动完成构建、13 项门禁验证、溯源注册并部署到你的机器或云账号。已有系统也可按 L1 契约接入治理。全程可审计、可回溯、可复现。">
 <style>
   :root {
     --bg: #05080e;
@@ -81,7 +81,7 @@
   /* ── hero ────────────────────────────── */
   .hero {
     max-width: 1180px; margin: 0 auto;
-    padding: 96px 40px 72px;
+    padding: 88px 40px 64px;
     text-align: center;
   }
   .kicker {
@@ -101,7 +101,7 @@
     100% { box-shadow: 0 0 0 0 rgba(46,229,157,0); }
   }
   .hero h1 {
-    margin: 26px auto 0; max-width: 880px;
+    margin: 26px auto 0; max-width: 900px;
     font-size: clamp(34px, 5.2vw, 58px); line-height: 1.16;
     font-weight: 700; letter-spacing: .01em;
   }
@@ -111,7 +111,7 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .hero .sub {
-    margin: 22px auto 0; max-width: 680px;
+    margin: 22px auto 0; max-width: 700px;
     font-size: 16.5px; line-height: 1.75; color: var(--dim);
   }
   .hero .ctas { margin-top: 36px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
@@ -137,24 +137,54 @@
   .sec-head .idx { font-family: var(--mono); font-size: 12px; color: var(--faint); letter-spacing: .2em; }
   .sec-head h2 { font-size: clamp(24px, 3vw, 32px); font-weight: 650; letter-spacing: .01em; }
   .sec-head .rule { flex: 1; height: 1px; background: var(--line); }
+  .sec-sub { margin: -20px 0 30px; color: var(--dim); font-size: 14.5px; line-height: 1.7; max-width: 760px; }
 
-  /* problem → solution */
-  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 860px) { .versus { grid-template-columns: 1fr; } }
-  .vs-card {
+  /* two customer paths */
+  .paths { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 860px) { .paths { grid-template-columns: 1fr; } }
+  .path {
     background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-    padding: 26px 26px 22px;
+    padding: 28px 26px 24px; position: relative; overflow: hidden;
   }
-  .vs-card h3 { font-size: 15px; font-weight: 650; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
-  .vs-card .tag { font-family: var(--mono); font-size: 10px; letter-spacing: .18em; padding: 3px 9px; border-radius: 5px; text-transform: uppercase; }
-  .vs-old .tag { color: var(--red); border: 1px solid rgba(255,92,108,.4); background: rgba(255,92,108,.07); }
-  .vs-new .tag { color: var(--green); border: 1px solid rgba(46,229,157,.4); background: rgba(46,229,157,.07); }
-  .vs-card ul { list-style: none; }
-  .vs-card li { font-size: 14px; line-height: 1.7; color: var(--dim); padding: 7px 0 7px 22px; position: relative; border-top: 1px solid var(--line-soft); }
-  .vs-card li:first-child { border-top: none; }
-  .vs-old li::before { content: "✕"; position: absolute; left: 0; color: var(--red); font-size: 12px; }
-  .vs-new li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-size: 12px; }
-  .vs-new li { color: var(--ink); }
+  .path::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 2px;
+    background: linear-gradient(90deg, var(--pc, var(--green)), transparent);
+  }
+  .path .tag {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px; letter-spacing: .18em;
+    color: var(--pc, var(--green)); text-transform: uppercase;
+    border: 1px solid color-mix(in srgb, var(--pc, var(--green)) 40%, transparent);
+    background: color-mix(in srgb, var(--pc, var(--green)) 8%, transparent);
+    padding: 3px 10px; border-radius: 5px;
+  }
+  .path h3 { font-size: 19px; font-weight: 650; margin: 14px 0 8px; }
+  .path .who { font-size: 13px; color: var(--faint); margin-bottom: 16px; }
+  .path ol { list-style: none; counter-reset: step; }
+  .path ol li {
+    counter-increment: step; position: relative;
+    padding: 9px 0 9px 34px; font-size: 13.5px; line-height: 1.6; color: var(--dim);
+    border-top: 1px solid var(--line-soft);
+  }
+  .path ol li::before {
+    content: counter(step); position: absolute; left: 0; top: 9px;
+    width: 22px; height: 22px; border-radius: 6px;
+    font-family: var(--mono); font-size: 11px; color: var(--pc, var(--green));
+    border: 1px solid color-mix(in srgb, var(--pc, var(--green)) 40%, transparent);
+    display: grid; place-items: center;
+  }
+  .path ol li b { color: var(--ink); font-weight: 600; }
+  .path .go { margin-top: 18px; font-size: 13px; }
+  .path .go a { font-weight: 600; }
+
+  /* journey strip */
+  .journey {
+    margin-top: 18px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    font-family: var(--mono); font-size: 12px; color: var(--dim);
+    border: 1px dashed var(--line); border-radius: 10px; padding: 14px 18px;
+  }
+  .journey b { color: var(--green); font-weight: 600; }
+  .journey .arrow { color: var(--faint); }
 
   /* pipeline */
   .pipeline { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
@@ -177,6 +207,68 @@
     border: 1px dashed var(--line); border-radius: 10px; padding: 13px 18px;
   }
   .pipe-note b { color: var(--dim); font-weight: 600; }
+
+  /* terminal / api demo */
+  .term {
+    background: #070c14; border: 1px solid var(--line); border-radius: 14px;
+    overflow: hidden; font-family: var(--mono); font-size: 13px;
+  }
+  .term-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 11px 18px; border-bottom: 1px solid var(--line);
+    color: var(--faint); font-size: 11px; letter-spacing: .12em;
+  }
+  .term-head i { width: 10px; height: 10px; border-radius: 50%; }
+  .term-head i:nth-child(1) { background: var(--red); }
+  .term-head i:nth-child(2) { background: var(--amber); }
+  .term-head i:nth-child(3) { background: var(--green); }
+  .term-head span { margin-left: 8px; text-transform: uppercase; }
+  .term-body { padding: 16px 22px; overflow-x: auto; }
+  .term-body .row { padding: 5px 0; white-space: pre-wrap; word-break: break-all; line-height: 1.6; }
+  .term-body .cmd { color: var(--cyan); }
+  .term-body .cmd::before { content: "$ "; color: var(--faint); }
+  .term-body .out { color: var(--green); }
+  .term-body .out.dim { color: var(--dim); }
+  .term-body .gap { height: 10px; }
+
+  /* targets */
+  .targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .target {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px 20px 17px;
+  }
+  .target .kind {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--tc, var(--green));
+  }
+  .target h3 { font-size: 15px; font-weight: 650; margin: 8px 0 6px; }
+  .target p { font-size: 12.5px; line-height: 1.65; color: var(--dim); }
+  .target .meta { margin-top: 10px; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .target .meta b { color: var(--green); font-weight: 500; }
+
+  /* manifest + l1 list */
+  .l1 { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .l1 { grid-template-columns: 1fr; } }
+  .l1-list { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 22px; }
+  .l1-list .item { display: flex; gap: 14px; padding: 15px 0; border-top: 1px solid var(--line-soft); }
+  .l1-list .item:first-child { border-top: none; }
+  .l1-list .n {
+    flex: none; width: 26px; height: 26px; border-radius: 7px;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: 12px; color: var(--blue);
+    border: 1px solid rgba(79,163,255,.4); background: rgba(79,163,255,.07);
+  }
+  .l1-list .item h4 { font-size: 14px; font-weight: 650; margin-bottom: 3px; }
+  .l1-list .item p { font-size: 12.5px; color: var(--dim); line-height: 1.6; }
+  .l1-list .item p code { font-family: var(--mono); font-size: 11.5px; color: var(--cyan); background: rgba(56,213,232,.08); padding: 1px 5px; border-radius: 4px; }
+  pre.manifest {
+    background: #070c14; border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 22px; font-family: var(--mono); font-size: 12px; line-height: 1.7;
+    color: var(--dim); overflow-x: auto;
+  }
+  pre.manifest .k { color: var(--cyan); }
+  pre.manifest .s { color: var(--green); }
+  pre.manifest .c { color: var(--faint); }
 
   /* live proof */
   .live {
@@ -211,17 +303,6 @@
   }
   .benefit h3 { font-size: 14.5px; font-weight: 650; margin-bottom: 7px; }
   .benefit p { font-size: 12.5px; line-height: 1.7; color: var(--dim); }
-
-  /* quickstart */
-  .quickstart {
-    background: #070c14; border: 1px solid var(--line); border-radius: 14px;
-    padding: 8px 0; font-family: var(--mono); font-size: 13px; overflow-x: auto;
-  }
-  .quickstart .row { display: flex; gap: 16px; padding: 9px 22px; border-top: 1px solid var(--line-soft); white-space: nowrap; }
-  .quickstart .row:first-child { border-top: none; }
-  .quickstart .cmt { color: var(--faint); min-width: 300px; }
-  .quickstart .cmd { color: var(--green); }
-  .quickstart .cmd b { color: var(--cyan); font-weight: 500; }
 
   /* faq */
   .faq details {
@@ -266,9 +347,10 @@
     <div class="name">AI-Native <span>DAM</span></div>
   </div>
   <div class="nav-links">
-    <a href="#how">工作原理</a>
+    <a href="#paths">怎么接入</a>
+    <a href="#use">怎么用</a>
+    <a href="#deploy">怎么部署</a>
     <a href="#proof">实地验证</a>
-    <a href="#quickstart">如何使用</a>
     <a href="#faq">FAQ</a>
     <a class="btn btn-ghost" href="https://github.com/vfvincentwong2026/ai-native-dam">GitHub</a>
     <a class="btn btn-primary" href="/governance/">治理实况大屏</a>
@@ -277,54 +359,179 @@
 
 <header class="hero">
   <span class="kicker"><i></i>GOVERNANCE PLANE · AI-NATIVE ASSETS</span>
-  <h1>让 AI 造系统，<br>但每一行代码都<em>可审计、可回溯、可复现</em></h1>
+  <h1>你提需求，AI 造系统，<br>每一行代码都<em>可审计、可回溯、可复现</em></h1>
   <p class="sub">
-    AI-Native DAM 是 AI 原生资产的治理平面。从一份审批过的 System Spec 出发：确定性编译蓝图、
-    受预算约束地生成代码、13 项门禁验证、四级溯源注册、一键部署 —— 模型可以换，治理不动。
+    写下你要什么，审批一份规格书，剩下的交给流水线：构建、验证、注册、部署到你的机器或云账号。
+    你已有的系统，也可以按 L1 契约接入同一套治理 —— 客户只看到两件事：<b style="color:var(--ink)">结果能用，过程可查</b>。
   </p>
   <div class="ctas">
-    <a class="btn btn-primary" href="/governance/">查看治理实况大屏</a>
-    <a class="btn btn-ghost" href="https://github.com/vfvincentwong2026/ai-native-dam">在 GitHub 上阅读源码</a>
+    <a class="btn btn-primary" href="#paths">选择你的接入路径</a>
+    <a class="btn btn-ghost" href="/governance/">先看治理实况大屏</a>
   </div>
   <div class="proof-strip">
-    <div class="proof"><div class="num">13</div><div class="label">项确定性验证门禁</div></div>
-    <div class="proof" style="--pc:var(--cyan)"><div class="num">4 级</div><div class="label">Spec→蓝图→系统→部署 溯源链</div></div>
-    <div class="proof" style="--pc:var(--blue)"><div class="num">100%</div><div class="label">蓝图确定性编译 · 同 Spec 同哈希</div></div>
-    <div class="proof" style="--pc:var(--violet)"><div class="num">C0–C3</div><div class="label">模型分级路由 + 预算熔断</div></div>
+    <div class="proof"><div class="num">10 min</div><div class="label">从需求到跑起来的系统</div></div>
+    <div class="proof" style="--pc:var(--cyan)"><div class="num">13</div><div class="label">项确定性验证门禁</div></div>
+    <div class="proof" style="--pc:var(--blue)"><div class="num">4 级</div><div class="label">Spec→蓝图→系统→部署 溯源链</div></div>
+    <div class="proof" style="--pc:var(--violet)"><div class="num">0</div><div class="label">供应商锁定 · 模型随时可换</div></div>
   </div>
 </header>
 
-<section id="why">
-  <div class="sec-head"><span class="idx">01</span><h2>为什么需要治理平面</h2><span class="rule"></span></div>
-  <div class="versus">
-    <div class="vs-card vs-old">
-      <h3><span class="tag">Without DAM</span>让 AI 直接写系统</h3>
-      <ul>
-        <li>提示词进、代码出 —— 中间没有任何可检查的产物</li>
-        <li>模型幻觉依赖版本，安装即失败，没人知道为什么</li>
-        <li>测试全绿，一部署发现表都没建 —— 门禁形同虚设</li>
-        <li>三个月后没人说得清这个系统是哪份需求、哪个模型造的</li>
-      </ul>
+<section id="paths">
+  <div class="sec-head"><span class="idx">01</span><h2>客户怎么接入：两条路径</h2><span class="rule"></span></div>
+  <p class="sec-sub">你是想 <b style="color:var(--ink)">让 DAM 造一个新系统</b>，还是想 <b style="color:var(--ink)">把已经在跑的系统接进治理平面</b>？两条路都有标准化流程，都不需要你去懂编译器和模型路由。</p>
+  <div class="paths">
+    <div class="path" style="--pc:var(--green)">
+      <span class="tag">Path A · 造系统</span>
+      <h3>我有一件重复性的运营工作</h3>
+      <div class="who">适合：运营团队、内容团队、任何想要一个内部小系统但不想排期开发的业务方</div>
+      <ol>
+        <li><b>说人话提需求</b> —— 比如"每天扫一遍素材库，版权快到期提前 30 天提醒我"</li>
+        <li><b>审批规格书</b> —— 流水线把需求落成结构化 Spec（实体/字段/权限/工作流），你点头才算数</li>
+        <li><b>等一杯咖啡</b> —— 自动构建 + 沙箱真跑测试 + 13 项门禁，约 10 分钟</li>
+        <li><b>系统在你机器上跑起来</b> —— 一个标准 HTTP 服务，有自己的数据库和 API</li>
+      </ol>
+      <div class="go"><a href="#use">看看拿到手的系统长什么样 →</a></div>
     </div>
-    <div class="vs-card vs-new">
-      <h3><span class="tag">With DAM</span>治理先行，生成在后</h3>
-      <ul>
-        <li>Spec 必须人工审批通过，蓝图由规则确定性编译</li>
-        <li>依赖集、服务端入口、建表语句全部由编译器确定生成</li>
-        <li>可执行沙箱真实安装、构建、跑测试，失败自动修复重试</li>
-        <li>spec → blueprint hash → system → instance 全链路可查证</li>
-      </ul>
+    <div class="path" style="--pc:var(--blue)">
+      <span class="tag">Path B · 接治理</span>
+      <h3>我已经有系统在跑，想被管起来</h3>
+      <div class="who">适合：已有内部工具/微服务的团队，需要登记、审计、健康监控和权限治理</div>
+      <ol>
+        <li><b>写一个 manifest</b> —— 仓库根目录放 <code style="font-family:var(--mono);color:var(--cyan)">dam.manifest.yaml</code>，声明运行时/资源/数据边界</li>
+        <li><b>补齐 L1 四件事</b> —— 可声明打包、健康端点、零硬编码密钥（清单见下文）</li>
+        <li><b>走 MCP 登记流程</b> —— 写操作全部带审批闸门，幂等可重跑</li>
+        <li><b>出现在治理大屏</b> —— 注册、部署、健康心跳全留痕，随时可查</li>
+      </ol>
+      <div class="go"><a href="#onboard">看 L1 接入清单和 manifest 模板 →</a></div>
     </div>
+  </div>
+  <div class="journey">
+    <b>客户视角的一天：</b> 早上提需求 <span class="arrow">→</span> 审批规格 <span class="arrow">→</span> 喝咖啡 <span class="arrow">→</span> <b>系统上线</b> <span class="arrow">→</span> 下午在大屏上看到它的健康心跳 <span class="arrow">→</span> 三个月后审计时一键调出它的完整出身
   </div>
 </section>
 
+<section id="use">
+  <div class="sec-head"><span class="idx">02</span><h2>拿到手怎么用：一个标准 HTTP 服务</h2><span class="rule"></span></div>
+  <p class="sec-sub">
+    生成出来的不是"代码包"，是<b style="color:var(--ink)">正在运行的服务</b>。下面是真实在跑的系统
+    （版权到期预警台 0.5.1，实例 inst-dae2c274）的<strong>真实响应</strong> —— 不是示意图：
+  </p>
+  <div class="term">
+    <div class="term-head"><i></i><i></i><i></i><span>live system · 版权到期预警台 @ 0.5.1</span></div>
+    <div class="term-body">
+      <div class="row cmd">curl http://localhost:3000/health</div>
+      <div class="row out">{"status":"healthy"}</div>
+      <div class="row gap"></div>
+      <div class="row cmd">curl http://localhost:3000/license-alerts</div>
+      <div class="row out">[]  <span class="out dim"># 预警清单 —— 表已由编译器确定性建好，开箱即可读写</span></div>
+      <div class="row gap"></div>
+      <div class="row cmd">curl http://localhost:3000/nonexistent</div>
+      <div class="row out dim">{"error":"not_found"}  <span class="out dim"># 路由契约一致：未匹配的路径一律 404</span></div>
+    </div>
+  </div>
+  <div class="journey" style="margin-top:16px">
+    <b>权限由 Spec 决定：</b> 这个系统的 Spec 声明了只读权限，所以流水线只生成查询端点 —— 多一个写接口都不会出现。
+    你在规格书里写什么，客户拿到什么，<b>不多不少</b>。
+  </div>
+</section>
+
+<section id="deploy">
+  <div class="sec-head"><span class="idx">03</span><h2>怎么部署：你的环境，你做主</h2><span class="rule"></span></div>
+  <p class="sec-sub">
+    部署目标是登记制的：本机、云服务器、边缘节点都可以成为 target。部署前健康探针先活查 ——
+    <b style="color:var(--ink)">拒绝幽灵部署</b>；版本切换时旧实例一键吊销，全程留痕。
+    这是当前真实的部署平面（治理大屏实时同步）：
+  </p>
+  <div class="targets">
+    <div class="target" style="--tc:var(--green)">
+      <div class="kind">onprem · 本机</div>
+      <h3>owner-laptop</h3>
+      <p>开发/小团队场景：系统跑在你自己的电脑上，sqlite 本地存储，零外部依赖，断网可用。</p>
+      <div class="meta">正跑着 <b>版权到期预警台 0.5.1</b> · 心跳正常</div>
+    </div>
+    <div class="target" style="--tc:var(--cyan)">
+      <div class="kind">cloud · 腾讯云</div>
+      <h3>tf-cloud-2c2g</h3>
+      <p>生产场景：登记云主机为 target，部署实例后由 DAM 持续记录健康心跳，异常一目了然。</p>
+      <div class="meta">正跑着 <b>TradeFlow 0.2.0</b> · 心跳正常</div>
+    </div>
+    <div class="target" style="--tc:var(--violet)">
+      <div class="kind">onprem · 专用节点</div>
+      <h3>video-batch 单元</h3>
+      <p>一个系统一个目标：独立部署单元互不干扰，各自的实例和健康记录分开审计。</p>
+      <div class="meta">正跑着 <b>Video Batch ID 0.9.0</b> · 心跳正常</div>
+    </div>
+  </div>
+  <div class="journey" style="margin-top:16px">
+    <b>版本切换实录：</b> 0.5.1 上线时，部署脚本活查通过 → 登记新实例 inst-dae2c274 → 旧 0.4.0 实例自动吊销（superseded）→ 打第一次心跳。一条命令，大屏同步可见。
+  </div>
+</section>
+
+<section id="onboard">
+  <div class="sec-head"><span class="idx">04</span><h2>已有系统接入：L1 清单 + 一个 manifest</h2><span class="rule"></span></div>
+  <div class="l1">
+    <div class="l1-list">
+      <div class="item">
+        <div class="n">1</div>
+        <div>
+          <h4>可声明打包</h4>
+          <p>Dockerfile、docker-compose 或 wrangler.toml 任一 —— 你的系统怎么被打包/启动，是声明出来的，不是口口相传的。</p>
+        </div>
+      </div>
+      <div class="item">
+        <div class="n">2</div>
+        <div>
+          <h4>仓库根目录的 <code>dam.manifest.yaml</code></h4>
+          <p>声明运行时、资源下限、数据边界（哪些不出本机/哪些可上云/哪些必须脱敏）、健康端点。模板就在右边。</p>
+        </div>
+      </div>
+      <div class="item">
+        <div class="n">3</div>
+        <div>
+          <h4>标准健康端点</h4>
+          <p><code>GET /health</code> 返回 200。DAM 的部署探针和心跳都靠它 —— 拒绝登记摸不到的系统。</p>
+        </div>
+      </div>
+      <div class="item">
+        <div class="n">4</div>
+        <div>
+          <h4>零硬编码密钥</h4>
+          <p>密钥只从环境变量读；需要 DAM 注入的密钥在 manifest 的 <code>injectedSecrets</code> 里声明。</p>
+        </div>
+      </div>
+    </div>
+    <pre class="manifest"><span class="c"># dam.manifest.yaml — InstallableUnit L1</span>
+<span class="k">apiVersion:</span> <span class="s">dam.ai-native/v1</span>
+<span class="k">kind:</span> <span class="s">InstallableUnit</span>
+<span class="k">metadata:</span>
+  <span class="k">name:</span> <span class="s">my-system</span>
+  <span class="k">version:</span> <span class="s">1.0.0</span>
+<span class="k">spec:</span>
+  <span class="k">runtime:</span>
+    <span class="k">repo:</span> <span class="s">https://github.com/you/my-system</span>
+    <span class="k">entrypoint:</span> [<span class="s">"node"</span>, <span class="s">"src/server.ts"</span>]
+  <span class="k">resources:</span>
+    <span class="k">min:</span> { <span class="k">cpu:</span> <span class="s">1</span>, <span class="k">mem:</span> <span class="s">1Gi</span>, <span class="k">storage:</span> <span class="s">5Gi</span> }
+  <span class="k">health:</span>
+    <span class="k">liveness:</span> <span class="s">/health</span>
+  <span class="k">dataBoundary:</span>
+    <span class="k">localOnly:</span> [<span class="s">客户数据</span>]
+    <span class="k">redacted:</span>  [<span class="s">手机号</span>, <span class="s">身份证号</span>]</pre>
+  </div>
+  <p style="margin-top:16px; font-size:13px; color:var(--dim); line-height:1.7">
+    登记走 MCP 工具流（起草 Spec → 提交 → 审批 → 注册 → 登记目标 → 登记实例 → 打心跳），
+    写操作全部是<b style="color:var(--ink)">两段式审批闸门</b>，令牌一次性、有过期时间；脚本幂等可重跑。
+    完整指南：<a href="https://github.com/vfvincentwong2026/ai-native-dam/blob/main/docs/onboarding.md">docs/onboarding.md</a>。
+  </p>
+</section>
+
 <section id="how">
-  <div class="sec-head"><span class="idx">02</span><h2>六步流水线：从需求到部署</h2><span class="rule"></span></div>
+  <div class="sec-head"><span class="idx">05</span><h2>背后发生了什么：六步流水线</h2><span class="rule"></span></div>
   <div class="pipeline">
     <div class="stage" style="--sc:var(--blue)">
       <div class="step">Step 1 · Spec</div>
       <h3>规格审批</h3>
-      <p>业务需求落成结构化 System Spec：实体、字段、权限、工作流。人工审批通过才进入下一步。</p>
+      <p>需求落成结构化 System Spec：实体、字段、权限、工作流。人工审批通过才进入下一步。</p>
       <span class="badge">人类门禁</span>
     </div>
     <div class="stage" style="--sc:var(--cyan)">
@@ -336,7 +543,7 @@
     <div class="stage" style="--sc:var(--green)">
       <div class="step">Step 3 · Build</div>
       <h3>受控生成</h3>
-      <p>蓝图携带提示词计划，C0–C3 分级路由到不同模型；服务端入口、契约、建表语句由编译器直出，不经 LLM。</p>
+      <p>C0–C3 分级路由到不同模型；服务端入口、契约、建表语句由编译器直出，不经 LLM。</p>
       <span class="badge">预算熔断</span>
     </div>
     <div class="stage" style="--sc:var(--amber)">
@@ -348,13 +555,13 @@
     <div class="stage" style="--sc:var(--violet)">
       <div class="step">Step 5 · Register</div>
       <h3>溯源注册</h3>
-      <p>验证通过才允许注册。系统携带 spec id、blueprint hash、verify report 引用 —— 四级溯源链闭合。</p>
+      <p>验证通过才允许注册。系统携带 spec id、blueprint hash、verify report —— 四级溯源链闭合。</p>
       <span class="badge">verify-before-register</span>
     </div>
     <div class="stage" style="--sc:var(--red)">
       <div class="step">Step 6 · Deploy</div>
       <h3>受管部署</h3>
-      <p>健康探针先活查再登记，target → instance → heartbeat 全程留痕，旧版本实例一键吊销完成切换。</p>
+      <p>健康探针先活查再登记，target → instance → heartbeat 全程留痕，旧版本实例一键吊销。</p>
       <span class="badge">拒绝幽灵部署</span>
     </div>
   </div>
@@ -365,7 +572,7 @@
 </section>
 
 <section id="proof">
-  <div class="sec-head"><span class="idx">03</span><h2>实地验证：版权到期预警台</h2><span class="rule"></span></div>
+  <div class="sec-head"><span class="idx">06</span><h2>实地验证：版权到期预警台</h2><span class="rule"></span></div>
   <div class="live">
     <div class="live-head">
       <div class="title"><i></i>最新实跑 · 全链路绿 · 已注册已部署</div>
@@ -378,24 +585,24 @@
       </div>
       <div>
         <div class="k">Blueprint</div>
-        <div class="v">bp-bdfc53f20c92</div>
+        <div class="v">bp-0cfff983c1cd</div>
         <div class="k" style="margin-top:8px">确定性编译 · 哈希可复算</div>
       </div>
       <div>
         <div class="k">Generated System</div>
-        <div class="v">sys-06369e1d</div>
-        <div class="k" style="margin-top:8px">版权到期预警台 @ 0.5.x · registered</div>
+        <div class="v">sys-20dd1672</div>
+        <div class="k" style="margin-top:8px">版权到期预警台 @ 0.5.1 · registered</div>
       </div>
       <div>
         <div class="k">Deployment</div>
-        <div class="v dim">owner-laptop (onprem) → 健康探针实测通过 → instance 登记 + 心跳留痕</div>
+        <div class="v dim">owner-laptop (onprem) → 探针实测 34ms → inst-dae2c274 + 心跳留痕</div>
       </div>
     </div>
   </div>
 </section>
 
 <section id="benefits">
-  <div class="sec-head"><span class="idx">04</span><h2>你能得到什么</h2><span class="rule"></span></div>
+  <div class="sec-head"><span class="idx">07</span><h2>你能得到什么</h2><span class="rule"></span></div>
   <div class="benefits">
     <div class="benefit">
       <div class="glyph">⛓</div>
@@ -420,47 +627,35 @@
   </div>
 </section>
 
-<section id="quickstart">
-  <div class="sec-head"><span class="idx">05</span><h2>如何使用：十分钟跑通全链路</h2><span class="rule"></span></div>
-  <div class="quickstart">
-    <div class="row"><span class="cmt"># 1. 克隆并安装</span><span class="cmd">git clone https://github.com/vfvincentwong2026/ai-native-dam && cd ai-native-dam && <b>pnpm install</b></span></div>
-    <div class="cmt"></div>
-    <div class="row"><span class="cmt"># 2. 配置模型路由（OpenRouter 免费模型即可起步）</span><span class="cmd">cp .env.example .env <b># 填入 MODEL_ROUTER_BASE_URL / API_KEY</b></span></div>
-    <div class="row"><span class="cmt"># 3. 启动治理网关</span><span class="cmd"><b>pnpm --filter @ai-native-dam/mcp-gateway start</b></span></div>
-    <div class="row"><span class="cmt"># 4. 跑一次真实构建：Spec 审批 → 编译 → 生成 → 沙箱验证 → 注册</span><span class="cmd"><b>pnpm build:real</b></span></div>
-    <div class="row"><span class="cmt"># 5. 启动生成的系统并登记部署</span><span class="cmd">node .dam-runs/&lt;run-id&gt;/src/server.ts && <b>node scripts/deploy-local.mjs</b></span></div>
-  </div>
-  <p style="margin-top:16px; font-size:13px; color:var(--dim); line-height:1.7">
-    详细架构决策见仓库 <a href="https://github.com/vfvincentwong2026/ai-native-dam/tree/main/docs">docs/adr</a>；
-    治理大屏上的 Skill 注册表、Spec 审批视图、蒸馏队列都是实时数据，不是截图。
-  </p>
-</section>
-
 <section id="faq" class="faq">
-  <div class="sec-head"><span class="idx">06</span><h2>常见问题</h2><span class="rule"></span></div>
+  <div class="sec-head"><span class="idx">08</span><h2>客户常问</h2><span class="rule"></span></div>
   <details open>
-    <summary>这和直接用 Cursor / Copilot 写代码有什么区别？</summary>
-    <p>那些工具优化的是"写"的效率，DAM 管的是"能不能上线"的治理：需求先审批、蓝图确定性编译、生成受预算约束、验证走可执行沙箱、注册强制溯源、部署活查登记。AI 写的每一行系统代码都在这条流水线里留痕。</p>
+    <summary>我不懂代码，能用吗？</summary>
+    <p>路径 A 就是为不懂代码的人设计的：你用自然语言提需求，审批的是一份人可读的规格书，之后构建、验证、部署全自动。日常使用拿到的是标准 HTTP API；需要操作界面的话，可以让流水线再生成一个前端系统接上去。</p>
+  </details>
+  <details>
+    <summary>生成的系统部署在哪？数据离开我的环境吗？</summary>
+    <p>部署到你的环境：你的电脑、你的云账号、你的边缘节点，target 登记制。治理数据存本地 PGlite/SQLite，生成的系统默认 <code>node:sqlite</code> 零外部依赖。唯一出网的是 LLM 推理调用 —— 指向哪个端点由你配置，包括完全本地的 Ollama。已有系统接入时，数据边界在 manifest 里显式声明：什么不出本机、什么可上云、什么必须脱敏。</p>
+  </details>
+  <details>
+    <summary>我已经有系统在跑了，接进来要改多少东西？</summary>
+    <p>四件事：可声明打包（Dockerfile/compose/wrangler 任一）、根目录一个 <code>dam.manifest.yaml</code>、一个 <code>/health</code> 端点、密钥改为环境变量读取。全部改动发生在你自己的仓库，DAM 不动你的代码 —— 它只裁决、登记、审计。</p>
   </details>
   <details>
     <summary>必须用指定的大模型吗？</summary>
-    <p>不需要。模型通过 C0–C3 分级路由接入，传输层是可插拔的 <code>ModelTransport</code>：OpenRouter、DeepSeek、本地 Ollama 都已验证。换模型只改环境变量，治理链路和蓝图哈希完全不受影响。</p>
+    <p>不需要。模型通过 C0–C3 分级路由接入，传输层可插拔：OpenRouter、DeepSeek、本地 Ollama 都已验证。换模型只改环境变量，治理链路和蓝图哈希完全不受影响。</p>
   </details>
   <details>
     <summary>生成的系统质量怎么保证？</summary>
     <p>三层：① 确定性文件（server 入口、契约、建表、tsconfig）不经过 LLM；② 13 项门禁 + 沙箱真实 install/build/test；③ 失败文件定点修复环。验证不过就不允许注册，注册不了就不存在部署。</p>
   </details>
   <details>
-    <summary>数据会离开我的环境吗？</summary>
-    <p>治理数据存在本地 PGlite/SQLite，生成的系统默认 <code>node:sqlite</code> 零外部依赖。唯一出网的是 LLM 推理调用 —— 指向哪个端点由你配置，包括完全本地的 Ollama。</p>
+    <summary>出了问题怎么追溯？</summary>
+    <p>每个系统携带四级溯源链：System → Run → Blueprint → Spec。大屏上点开任何一个实例，能一路回到当初那份审批过的需求规格 —— 包括哪次验证通过、谁批准的、跑在什么目标上。</p>
   </details>
   <details>
     <summary>现在是什么成熟度？</summary>
-    <p>Founding Beta：六步流水线已端到端跑通真实系统（版权到期预警台 0.4.0 → 0.5.x），部署链闭环。沙箱目前是本机无隔离运行（dev-only），Docker 隔离沙箱在 ADR 0010 路线图内。</p>
-  </details>
-  <details>
-    <summary>怎么接入我自己的业务需求？</summary>
-    <p>写一份 System Spec（实体 + 字段 + 权限 + 工作流，仓库有模板），提交审批，然后 <code>pnpm build:real</code>。流水线会带着你的 Spec 走完编译、生成、验证、注册全程。</p>
+    <p>Founding Beta：六步流水线已端到端跑通真实系统（版权到期预警台 0.4.0 → 0.5.1），部署链闭环，三个真实 target 在线。沙箱目前是本机无隔离运行（dev-only），Docker 隔离沙箱在 ADR 0010 路线图内。</p>
   </details>
 </section>
 
