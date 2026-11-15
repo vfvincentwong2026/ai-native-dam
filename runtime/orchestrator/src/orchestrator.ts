@@ -20,12 +20,15 @@ import {
   executeBlueprint,
   materializeBuild,
   planBlueprint,
+  storageNote,
+  stripCodeFences,
   toBuildOutput,
   verifyBuild,
   type Blueprint,
   type BlueprintCompleter,
   type BuildOutput,
   type CompiledBuild,
+  type GeneratedFile,
   type SandboxRunner,
   type VerifyCheck,
   type VerifyReport,
@@ -59,6 +62,15 @@ export interface OrchestratorOptions {
   readonly sandbox?: SandboxRunner;
   /** Run-local workspace root for materialized builds; default `.dam-runs`. */
   readonly sandboxWorkDir?: string;
+  /**
+   * Targeted repair rounds when a sandbox step fails (default 0). Free-tier
+   * models occasionally emit broken code — a stray token, an orphan fence.
+   * With attempts > 0, the failing files (parsed from compiler output) are
+   * regenerated once per round through the run's own completer with the
+   * exact error log, and the sandbox is re-run. Repair calls stay inside
+   * the run's model budget (same completer seam).
+   */
+  readonly sandboxRepairAttempts?: number;
 }
 
 export interface RegistrationRequest extends PendingRegistration {
@@ -133,6 +145,8 @@ export class Orchestrator {
   private readonly verifyReports = new Map<string, VerifyReport>();
   /** Run-local compiled builds: run id → generated code tree (in-memory). */
   private readonly builds = new Map<string, CompiledBuild>();
+  /** Completer used per run — kept so sandbox repair rounds reuse the seam. */
+  private readonly completers = new Map<string, BlueprintCompleter>();
   /** Run-local skill usage records: run id → applied provenance skills. */
   private readonly skillUsages = new Map<string, AppliedSkill[]>();
 
@@ -225,6 +239,7 @@ export class Orchestrator {
       await this.applyProvenanceSkills(run, blueprint);
       const build = await executeBlueprint(blueprint, { runId, completer });
       this.builds.set(runId, build);
+      this.completers.set(runId, completer);
       return this.runs.advance(runId, 'verifying', { buildRef: `build://${runId}` });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -325,7 +340,7 @@ export class Orchestrator {
     // Executable verification (ADR 0010 §4 step 2): only for builds compiled
     // in-process — we can only materialize what we hold in memory.
     if (report.ok && this.options.sandbox && stored) {
-      report = await this.runSandbox(runId, stored, report);
+      report = await this.runSandbox(runId, stored, report, blueprint);
     }
     if (!report.ok) {
       const failed = report.checks.filter((c) => !c.ok).map((c) => c.name);
@@ -428,15 +443,48 @@ export class Orchestrator {
     runId: string,
     build: CompiledBuild,
     structural: VerifyReport,
+    blueprint: Blueprint,
   ): Promise<VerifyReport> {
     const workDir = join(this.options.sandboxWorkDir ?? '.dam-runs', runId);
-    await materializeBuild(workDir, build);
-    const result = await this.options.sandbox!.verify(workDir, { runId });
+    let current = build;
+    await materializeBuild(workDir, current);
+    let result = await this.options.sandbox!.verify(workDir, { runId });
+
+    // Targeted repair (ADR 0010 §4 hardening): when a sandbox step fails,
+    // regenerate just the files the compiler blames — with the exact error
+    // log in the prompt — and re-run the sandbox. Bounded by
+    // `sandboxRepairAttempts`; every repair call goes through the run's
+    // completer, so the model-router budget breaker still applies.
+    let attemptsLeft = this.options.sandboxRepairAttempts ?? 0;
+    while (!result.ok && attemptsLeft > 0) {
+      attemptsLeft -= 1;
+      const completer = this.completers.get(runId);
+      if (!completer) break;
+      const failedStep = result.steps.find((s) => !s.ok && s.name === 'build') ?? result.steps.find((s) => !s.ok);
+      if (!failedStep) break;
+      const badPaths = failedPathsFromLog(failedStep.logTail, current);
+      if (badPaths.length === 0) break;
+      const repaired = await this.repairFiles(runId, current, blueprint, badPaths, failedStep.logTail, completer);
+      if (!repaired) break;
+      current = repaired;
+      this.builds.set(runId, current);
+      await materializeBuild(workDir, current);
+      result = await this.options.sandbox!.verify(workDir, { runId });
+    }
+
     const sandboxChecks: VerifyCheck[] = result.steps.map((s) => ({
       name: `sandbox_${s.name}`,
       ok: s.ok,
       detail: s.ok ? `exit 0` : `exit ${s.exitCode ?? 'signal'}: ${s.logTail}`,
     }));
+    const repairedRounds = (this.options.sandboxRepairAttempts ?? 0) - attemptsLeft;
+    if (repairedRounds > 0) {
+      sandboxChecks.push({
+        name: 'sandbox_repair',
+        ok: result.ok,
+        detail: `${repairedRounds} targeted repair round(s) after sandbox failure`,
+      });
+    }
     return {
       ...structural,
       ok: structural.ok && result.ok,
@@ -444,9 +492,77 @@ export class Orchestrator {
     };
   }
 
+  /**
+   * Regenerate the blamed files with the compiler log in the prompt. Returns
+   * the updated build, or undefined when a repair call throws (budget
+   * breaker etc. — the sandbox verdict stands).
+   */
+  private async repairFiles(
+    runId: string,
+    build: CompiledBuild,
+    blueprint: Blueprint,
+    badPaths: readonly string[],
+    logTail: string,
+    completer: BlueprintCompleter,
+  ): Promise<CompiledBuild | undefined> {
+    const files: GeneratedFile[] = [...build.files];
+    try {
+      for (const path of badPaths) {
+        const idx = files.findIndex((f) => f.path === path);
+        if (idx < 0) continue;
+        const file = files[idx];
+        const planned = blueprint.files.find((f) => f.path === path);
+        const result = await completer.complete({
+          runId,
+          tier: file.tier,
+          promptSummary: `repair ${path}`,
+          prompt: [
+            `The generated file ${path} failed the executable sandbox build. Output the corrected full file.`,
+            `Purpose: ${planned?.purpose ?? file.promptSummary}`,
+            `Stack: ${blueprint.stack.runtime} / ${blueprint.stack.framework} / ${storageNote(blueprint)}.`,
+            `Compiler/test output:\n${logTail}`,
+            `Current broken content:\n${file.content}`,
+            `Rules: fix ONLY what the errors blame; keep the file's role and exports stable. Output ONLY the raw corrected file content — no markdown \`\`\` fences, no leading filename line, no commentary.`,
+          ].join('\n\n'),
+        });
+        files[idx] = { ...file, content: stripCodeFences(result.text, path) };
+      }
+    } catch {
+      return undefined;
+    }
+    return { ...build, files };
+  }
+
   private mustGet(runId: string): BuildRun {
     const run = this.runs.get(runId);
     if (!run) throw new Error(`run ${runId} does not exist`);
     return run;
   }
+}
+
+/**
+ * Pull the blamed file paths out of a failed sandbox step log. Understands
+ * tsc output (`src/a.ts(3,11): error …`) and vitest failures
+ * (`FAIL tests/a.test.ts …`); paths not in the build are ignored. Capped so
+ * one repair round stays cheap.
+ */
+function failedPathsFromLog(logTail: string, build: CompiledBuild): string[] {
+  const known = new Set(build.files.map((f) => f.path));
+  const found = new Set<string>();
+  for (const m of logTail.matchAll(/^([^\s(][^(\n]*?)\(\d+,\d+\):\s*error/gm)) {
+    if (known.has(m[1])) found.add(m[1]);
+  }
+  for (const m of logTail.matchAll(/FAIL\s+(\S+)/g)) {
+    if (known.has(m[1])) found.add(m[1]);
+  }
+  // tsc config errors carry no (line,col): "No inputs were found in config
+  // file 'D:/…/tsconfig.json'" — suffix-match the absolute path back to a
+  // known build file.
+  for (const m of logTail.matchAll(/config file '([^']+)'/g)) {
+    const abs = m[1].replaceAll('\\', '/');
+    for (const k of known) {
+      if (abs.endsWith(k)) found.add(k);
+    }
+  }
+  return [...found].slice(0, 4);
 }

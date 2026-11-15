@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   DockerSandboxRunner,
+  LocalSandboxRunner,
   materializeBuild,
   type CompiledBuild,
   type SpawnImpl,
@@ -91,6 +92,61 @@ describe('DockerSandboxRunner', () => {
     const runner = new DockerSandboxRunner({ spawnImpl });
 
     await runner.verify('/tmp/run-3', { runId: 'run-3', commands: { smoke: 'node dist/health.js' } });
+
+    expect(seen[2].args.at(-1)).toBe('node dist/health.js');
+  });
+});
+
+
+describe('LocalSandboxRunner', () => {
+  function fakeSpawn(exitCodes: Record<string, number>) {
+    const seen: { command: string; args: string[]; cwd?: string }[] = [];
+    const spawnImpl: SpawnImpl = async (command, args, options) => {
+      seen.push({ command, args: [...args], cwd: options?.cwd });
+      // last arg is the step command string; classify by its content
+      const cmd = args[args.length - 1];
+      const step = cmd.includes('install') ? 'install' : cmd.includes('build') ? 'build' : 'smoke';
+      return { exitCode: exitCodes[step] ?? 0, output: `output of ${step}` };
+    };
+    return { seen, spawnImpl };
+  }
+
+  it('runs install → build → smoke in the workdir via the host shell', async () => {
+    const { seen, spawnImpl } = fakeSpawn({});
+    const runner = new LocalSandboxRunner({ spawnImpl });
+
+    const result = await runner.verify('/tmp/run-local-1', { runId: 'run-local-1' });
+
+    expect(result.ok).toBe(true);
+    expect(result.steps.map((s) => s.name)).toEqual(['install', 'build', 'smoke']);
+    expect(seen).toHaveLength(3);
+    const shell = process.platform === 'win32' ? 'cmd' : 'sh';
+    for (const call of seen) {
+      expect(call.command).toBe(shell);
+      expect(call.cwd).toBe('/tmp/run-local-1');
+    }
+    expect(seen[0].args.at(-1)).toBe('npm install --no-audit --no-fund');
+    expect(seen[2].args.at(-1)).toBe('npm test');
+  });
+
+  it('short-circuits on the first failing step and keeps the log tail', async () => {
+    const { seen, spawnImpl } = fakeSpawn({ install: 1 });
+    const runner = new LocalSandboxRunner({ spawnImpl });
+
+    const result = await runner.verify('/tmp/run-local-2', { runId: 'run-local-2' });
+
+    expect(result.ok).toBe(false);
+    expect(result.steps.map((s) => s.name)).toEqual(['install']);
+    expect(result.steps[0].exitCode).toBe(1);
+    expect(result.steps[0].logTail).toBe('output of install');
+    expect(seen).toHaveLength(1); // build/smoke never ran
+  });
+
+  it('honours command overrides for non-default stacks', async () => {
+    const { seen, spawnImpl } = fakeSpawn({});
+    const runner = new LocalSandboxRunner({ spawnImpl });
+
+    await runner.verify('/tmp/run-local-3', { runId: 'run-local-3', commands: { smoke: 'node dist/health.js' } });
 
     expect(seen[2].args.at(-1)).toBe('node dist/health.js');
   });

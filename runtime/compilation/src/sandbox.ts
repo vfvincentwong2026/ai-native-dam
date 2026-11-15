@@ -70,12 +70,13 @@ export async function materializeBuild(dir: string, build: CompiledBuild): Promi
 export type SpawnImpl = (
   command: string,
   args: readonly string[],
+  options?: { cwd?: string },
 ) => Promise<{ exitCode: number | null; output: string }>;
 
 /** Real spawn: capture combined stdout+stderr, resolve on exit. */
-export const systemSpawn: SpawnImpl = (command, args) =>
+export const systemSpawn: SpawnImpl = (command, args, options) =>
   new Promise((resolve, reject) => {
-    const child = spawn(command, [...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, [...args], { stdio: ['ignore', 'pipe', 'pipe'], cwd: options?.cwd });
     let output = '';
     child.stdout.on('data', (d: Buffer) => (output += d.toString()));
     child.stderr.on('data', (d: Buffer) => (output += d.toString()));
@@ -121,6 +122,47 @@ export class DockerSandboxRunner implements SandboxRunner {
         this.image,
         'sh', '-lc', commands[name],
       ]);
+      const step: SandboxStep = {
+        name,
+        ok: exitCode === 0,
+        exitCode,
+        logTail: output.slice(-LOG_TAIL),
+      };
+      steps.push(step);
+      if (!step.ok) break; // first failure short-circuits
+    }
+
+    return { ok: steps.length === STEP_ORDER.length && steps.every((s) => s.ok), steps };
+  }
+}
+
+export interface LocalSandboxOptions {
+  readonly spawnImpl?: SpawnImpl;
+}
+
+/**
+ * Host-execution runner: same three steps, but run directly on the build
+ * host (`sh -lc`, or `cmd /d /s /c` on Windows) inside the materialized
+ * workdir. NO isolation — the generated tree's install/build/test scripts
+ * execute with the host user's privileges and network. Meant for dev
+ * machines without a container runtime; production verification should use
+ * DockerSandboxRunner (or a stronger sandbox) per ADR 0010 Open Question 3.
+ */
+export class LocalSandboxRunner implements SandboxRunner {
+  private readonly spawnImpl: SpawnImpl;
+
+  constructor(options: LocalSandboxOptions = {}) {
+    this.spawnImpl = options.spawnImpl ?? systemSpawn;
+  }
+
+  async verify(workDir: string, options: SandboxVerifyOptions): Promise<SandboxResult> {
+    const commands: SandboxCommands = { ...DEFAULT_SANDBOX_COMMANDS, ...options.commands };
+    const shell = process.platform === 'win32' ? 'cmd' : 'sh';
+    const shellArgs = process.platform === 'win32' ? ['/d', '/s', '/c'] : ['-lc'];
+    const steps: SandboxStep[] = [];
+
+    for (const name of STEP_ORDER) {
+      const { exitCode, output } = await this.spawnImpl(shell, [...shellArgs, commands[name]], { cwd: workDir });
       const step: SandboxStep = {
         name,
         ok: exitCode === 0,

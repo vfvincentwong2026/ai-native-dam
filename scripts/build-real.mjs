@@ -19,6 +19,9 @@
  *   MODEL_RUN_MAX_CALLS      budget breaker (default 25)
  *   MODEL_RUN_MAX_TOKENS     budget breaker (default 200000)
  *   BUILD_SYSTEM_VERSION     version to register (default 0.2.0)
+ *   BUILD_SANDBOX            executable verification: auto (default, docker
+ *                            when available) | docker | local (host shell,
+ *                            no isolation — dev only) | off
  *   DAM_GATEWAY_URL          resident gateway (default http://127.0.0.1:8080)
  *   DAM_PG_DATA_DIR          embedded store when no gateway answers
  *
@@ -29,6 +32,7 @@
  */
 import { Orchestrator, HttpMcpClient } from '../runtime/orchestrator/dist/index.js';
 import { ModelRouter, OpenAiHttpTransport } from '../runtime/model-router/dist/index.js';
+import { DockerSandboxRunner, LocalSandboxRunner, systemSpawn } from '../runtime/compilation/dist/index.js';
 import {
   connectGateway,
   ensureApprovedSpec,
@@ -114,7 +118,40 @@ try {
 
     // --------------------------------------------- Builder Runtime (Build)
     const client = new HttpMcpClient({ baseUrl: gw.base, token: gw.builderToken });
-    const orchestrator = new Orchestrator(client);
+
+    // Executable verification (ADR 0010 §4 step 2). BUILD_SANDBOX:
+    //   auto  (default) — docker when the CLI answers, otherwise off
+    //   docker — throwaway containers (requires a running Docker)
+    //   local  — host shell, NO isolation; dev machines only
+    //   off    — structural gate only
+    const sandboxMode = (process.env.BUILD_SANDBOX ?? 'auto').toLowerCase();
+    let sandbox;
+    if (sandboxMode === 'docker') {
+      sandbox = new DockerSandboxRunner();
+    } else if (sandboxMode === 'local') {
+      sandbox = new LocalSandboxRunner();
+      log('sandbox: LOCAL host execution (no isolation — dev only)');
+    } else if (sandboxMode === 'auto') {
+      const probe = await systemSpawn('docker', ['--version']).catch(() => null);
+      if (probe && probe.exitCode === 0) {
+        sandbox = new DockerSandboxRunner();
+      } else {
+        log('sandbox: docker CLI not found — structural gate only (set BUILD_SANDBOX=local to verify on the host)');
+      }
+    } else if (sandboxMode !== 'off') {
+      throw new Error(`unknown BUILD_SANDBOX "${sandboxMode}" (auto|docker|local|off)`);
+    }
+    if (sandbox) log(`sandbox: ${sandboxMode === 'auto' ? 'docker (auto-detected)' : sandboxMode}`);
+
+    const orchestrator = new Orchestrator(client, undefined, {
+      ...(sandbox ? { sandbox } : {}),
+      sandboxWorkDir: '.dam-runs',
+      // Free-tier models occasionally emit broken code (stray token, orphan
+      // fence, node:sqlite API guesses). Allow two targeted repair rounds:
+      // the blamed files are regenerated with the exact compiler log, then
+      // the sandbox re-runs.
+      sandboxRepairAttempts: 3,
+    });
 
     const run = await orchestrator.startRun(specId);
     log(`run ${run.id} opened (state: ${run.state})`);
@@ -160,6 +197,13 @@ try {
   }
 } catch (err) {
   exitCode = 1;
+  // VerificationFailedError carries the gate report — print every check so
+  // a sandbox failure shows its log tail without digging into .dam-runs.
+  const report = err && typeof err === 'object' ? err.report : undefined;
+  if (report?.checks) {
+    console.error(`[real] verify gate report (${report.ok ? 'PASS' : 'FAIL'}):`);
+    for (const c of report.checks) console.error(`    ${c.ok ? '✓' : '✗'} ${c.name} — ${c.detail}`);
+  }
   fail(err instanceof Error ? err.message : String(err));
 } finally {
   await gw.close();

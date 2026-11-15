@@ -19,6 +19,9 @@ export { generateManifest, type ManifestOptions } from './manifest.js';
 export { verifyBuild, type BuildOutput, type VerifyCheck, type VerifyReport } from './verify.js';
 export {
   executeBlueprint,
+  generateTsconfig,
+  storageNote,
+  stripCodeFences,
   toBuildOutput,
   type BlueprintCompleter,
   type CompiledBuild,
@@ -28,9 +31,11 @@ export {
 export {
   DEFAULT_SANDBOX_COMMANDS,
   DockerSandboxRunner,
+  LocalSandboxRunner,
   materializeBuild,
   systemSpawn,
   type DockerSandboxOptions,
+  type LocalSandboxOptions,
   type SandboxCommands,
   type SandboxResult,
   type SandboxRunner,

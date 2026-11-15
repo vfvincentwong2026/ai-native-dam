@@ -21,9 +21,13 @@ import type {
 
 const DEFAULT_STACK: StackChoice = {
   runtime: 'node-22',
-  framework: 'nextjs-15',
+  // Plain TypeScript service — the planned file layout (src/models,
+  // src/routes, src/workflows, tests) is framework-free, so the stack must
+  // be too; a nextjs label used to invite framework deps whose peers
+  // conflicted (caught by the executable sandbox).
+  framework: 'ts-service',
   storage: 'sqlite',
-  rationale: 'default internal-console stack; self-hostable, zero external services',
+  rationale: 'default internal-service stack; self-hostable, zero external services',
 };
 
 /** Domain-specific stack overrides, matched on businessDomain keywords. */
@@ -31,7 +35,7 @@ const STACK_OVERRIDES: ReadonlyArray<{ match: RegExp; stack: StackChoice }> = [
   {
     stack: {
       runtime: 'node-22',
-      framework: 'nextjs-15',
+      framework: 'ts-service',
       storage: 'postgres',
       rationale: 'order/transaction domains need relational integrity and concurrent writers',
     },
@@ -40,9 +44,9 @@ const STACK_OVERRIDES: ReadonlyArray<{ match: RegExp; stack: StackChoice }> = [
   {
     stack: {
       runtime: 'node-22',
-      framework: 'nextjs-15',
+      framework: 'ts-service',
       storage: 'sqlite',
-      rationale: 'content-ops console: read-heavy dashboards over a local store',
+      rationale: 'content-ops service: read-heavy queries over a local store',
     },
     match: /short_drama|content|drama|media/i,
   },
@@ -140,7 +144,16 @@ function planFiles(
       path: 'package.json',
       kind: 'config',
       module: 'core',
-      purpose: 'Package manifest with pinned scripts (dev/build/start/test)',
+      purpose:
+        'Package manifest: scripts build (tsc -p tsconfig.json) and test (vitest run); ' +
+        'dependencies declared as caret ranges on well-known existing versions',
+      tier: 'C0',
+    },
+    {
+      path: 'tsconfig.json',
+      kind: 'config',
+      module: 'core',
+      purpose: 'TypeScript compiler config: strict, NodeNext modules, outDir dist',
       tier: 'C0',
     },
     {

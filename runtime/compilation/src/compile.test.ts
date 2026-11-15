@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SystemSpec } from '@ai-native-dam/shared-schema';
-import { executeBlueprint, generateManifest, planBlueprint, toBuildOutput, verifyBuild, type BlueprintCompleter, type PromptTier } from './index.js';
+import { executeBlueprint, generateManifest, generateTsconfig, planBlueprint, toBuildOutput, verifyBuild, type BlueprintCompleter, type PromptTier } from './index.js';
 
 const SPEC: SystemSpec = {
   id: 'spec-0001',
@@ -52,10 +52,10 @@ describe('executeBlueprint', () => {
     const build = await executeBlueprint(blueprint, { runId: 'run-1', completer });
 
     const planned = blueprint.promptPlan;
-    // every item except dam.manifest.yaml goes through the completer
-    expect(calls).toHaveLength(planned.length - 1);
+    // every item except the two deterministic files goes through the completer
+    expect(calls).toHaveLength(planned.length - 2);
     expect(calls.map((c) => c.promptSummary)).toEqual(
-      planned.filter((p) => p.file !== 'dam.manifest.yaml').map((p) => p.promptSummary),
+      planned.filter((p) => p.file !== 'dam.manifest.yaml' && p.file !== 'tsconfig.json').map((p) => p.promptSummary),
     );
     // tiers route as planned: workflow file at C2, review at C3
     const reviewCall = calls.find((c) => c.promptSummary.includes('Cross-module'));
@@ -66,16 +66,24 @@ describe('executeBlueprint', () => {
     expect(build.blueprintRef).toBe(blueprint.id);
   });
 
-  it('never asks the LLM for dam.manifest.yaml — content is deterministic', async () => {
+  it('never asks the LLM for dam.manifest.yaml or tsconfig.json — both are deterministic', async () => {
     const blueprint = planBlueprint(SPEC);
     const { calls, completer } = fakeCompleter();
 
     const build = await executeBlueprint(blueprint, { runId: 'run-1', completer });
 
     expect(calls.some((c) => c.promptSummary.includes('dam.manifest.yaml'))).toBe(false);
+    // other files' purposes legitimately mention tsconfig.json — assert the
+    // tsconfig plan item itself was never sent, via its own promptSummary
+    const tsconfigItem = blueprint.promptPlan.find((p) => p.file === 'tsconfig.json');
+    expect(tsconfigItem).toBeDefined();
+    expect(calls.some((c) => c.promptSummary === tsconfigItem!.promptSummary)).toBe(false);
     const manifestFile = build.files.find((f) => f.path === 'dam.manifest.yaml');
     expect(manifestFile?.content).toBe(generateManifest(blueprint));
     expect(build.manifest).toBe(generateManifest(blueprint));
+    const tsconfig = build.files.find((f) => f.path === 'tsconfig.json');
+    expect(tsconfig?.content).toBe(generateTsconfig());
+    expect(tsconfig?.content).toContain('src/**/*.ts');
   });
 
   it('captures the C3 review as notes, not as a file', async () => {
@@ -125,5 +133,68 @@ describe('executeBlueprint', () => {
     });
 
     expect(calls.every((c) => c.prompt.startsWith('CUSTOM :: '))).toBe(true);
+  });
+});
+
+
+describe('stripCodeFences', () => {
+  it('strips a whole-body markdown fence so generated code compiles', async () => {
+    const blueprint = planBlueprint(SPEC);
+    const completer: BlueprintCompleter = {
+      async complete(req) {
+        return { text: `\`\`\`typescript\n// ${req.promptSummary}\n\`\`\`\n` };
+      },
+    };
+
+    const build = await executeBlueprint(blueprint, { runId: 'run-fences', completer });
+
+    const generated = build.files.filter((f) => f.path !== 'dam.manifest.yaml' && f.path !== 'tsconfig.json');
+    expect(generated.length).toBeGreaterThan(0);
+    for (const f of generated) {
+      expect(f.content.startsWith('```')).toBe(false);
+      expect(f.content.endsWith('```')).toBe(false);
+      expect(f.content).toContain(f.promptSummary);
+    }
+  });
+
+  it('leaves unfenced and partially fenced content untouched', async () => {
+    const blueprint = planBlueprint(SPEC);
+    const plain = 'export const x = 1;\n';
+    const partial = '```ts\nexport const x = 1;\n'; // no closing fence
+    const completer: BlueprintCompleter = {
+      async complete(req) {
+        return { text: req.tier === 'C0' ? plain : partial };
+      },
+    };
+
+    const build = await executeBlueprint(blueprint, { runId: 'run-plain', completer });
+
+    const c0 = build.files.find((f) => f.path === 'package.json');
+    expect(c0?.content).toBe(plain);
+    // src/health.ts is C0 too — pick a C1 file explicitly (models are C1)
+    const c1 = build.files.find((f) => f.path.startsWith('src/models/'));
+    expect(c1?.content).toBe(partial);
+  });
+
+  it('drops a leading filename line before stripping the fence (observed LLM shape)', async () => {
+    const blueprint = planBlueprint(SPEC);
+    // The completer echoes the actual item path as a first line, then wraps
+    // the body in a fence — exactly what the sandbox observed in the wild.
+    const echoing: BlueprintCompleter = {
+      async complete(req) {
+        const file = /Generate the file (.+)\./.exec(req.prompt)?.[1] ?? 'unknown';
+        if (req.tier === 'C3') return { text: 'ok' };
+        return { text: `${file}\n\`\`\`typescript\n// ${req.promptSummary}\n\`\`\`\n` };
+      },
+    };
+
+    const build = await executeBlueprint(blueprint, { runId: 'run-pathline', completer: echoing });
+
+    const generated = build.files.filter((f) => f.path !== 'dam.manifest.yaml' && f.path !== 'tsconfig.json');
+    for (const f of generated) {
+      expect(f.content.startsWith('```')).toBe(false);
+      expect(f.content.split('\n')[0]).not.toBe(f.path);
+      expect(f.content).toContain(f.promptSummary);
+    }
   });
 });

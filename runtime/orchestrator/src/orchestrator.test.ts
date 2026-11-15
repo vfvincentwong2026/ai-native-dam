@@ -500,4 +500,103 @@ describe('Orchestrator', () => {
       await rm(workRoot, { recursive: true, force: true });
     }
   });
+
+  it('repairs the blamed files once, then re-verifies (targeted repair loop)', async () => {
+    const gw = fakeGateway(happyPathHandler([]));
+    const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
+    const workRoot = await mkdtemp(join(tmpdir(), 'dam-orch-repair-'));
+    let verifyCalls = 0;
+    const sandbox: SandboxRunner = {
+      async verify() {
+        verifyCalls += 1;
+        if (verifyCalls === 1) {
+          return {
+            ok: false,
+            steps: [
+              { name: 'install', ok: true, exitCode: 0, logTail: 'ok' },
+              { name: 'build', ok: false, exitCode: 2, logTail: 'src/models/order.ts(7,3): error TS1005: \',\' expected.' },
+            ],
+          };
+        }
+        return {
+          ok: true,
+          steps: [
+            { name: 'install', ok: true, exitCode: 0, logTail: 'ok' },
+            { name: 'build', ok: true, exitCode: 0, logTail: 'ok' },
+            { name: 'smoke', ok: true, exitCode: 0, logTail: 'ok' },
+          ],
+        };
+      },
+    };
+    const orch = new Orchestrator(client, undefined, { sandbox, sandboxWorkDir: workRoot, sandboxRepairAttempts: 1 });
+
+    try {
+      const run = await orch.startRun('spec-1');
+      const repairPrompts: string[] = [];
+      const completer: BlueprintCompleter = {
+        async complete(req) {
+          if (req.promptSummary.startsWith('repair ')) {
+            repairPrompts.push(req.prompt);
+            return { text: '// repaired order model' };
+          }
+          return { text: '// x' };
+        },
+      };
+      await orch.compile(run.id, completer);
+      const awaiting = await orch.requestRegistration(run.id, { name: 'Order Admin', version: '0.1.0' });
+
+      expect(awaiting.state).toBe('awaiting_registration');
+      // sandbox ran twice: initial fail, then pass after repair
+      expect(verifyCalls).toBe(2);
+      // exactly the blamed file got a repair prompt carrying the error log
+      expect(repairPrompts).toHaveLength(1);
+      expect(repairPrompts[0]).toContain('src/models/order.ts');
+      expect(repairPrompts[0]).toContain('TS1005');
+      // the stored build holds the repaired content
+      const stored = orch.getBuild(run.id);
+      expect(stored?.files.find((f) => f.path === 'src/models/order.ts')?.content).toBe('// repaired order model');
+      // the report records the repair round
+      const report = orch.getVerifyReport(run.id);
+      expect(report?.ok).toBe(true);
+      expect(report?.checks.find((c) => c.name === 'sandbox_repair')?.detail).toContain('1 targeted repair round');
+    } finally {
+      await rm(workRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('does not repair when sandboxRepairAttempts is 0 (default behaviour unchanged)', async () => {
+    const gw = fakeGateway(happyPathHandler([]));
+    const client = new HttpMcpClient({ baseUrl: 'http://gw.test', token: 't', fetchImpl: gw.fetchImpl });
+    const workRoot = await mkdtemp(join(tmpdir(), 'dam-orch-norepair-'));
+    let verifyCalls = 0;
+    const sandbox: SandboxRunner = {
+      async verify() {
+        verifyCalls += 1;
+        return {
+          ok: false,
+          steps: [{ name: 'build', ok: false, exitCode: 2, logTail: 'src/models/order.ts(1,1): error TS1005: x' }],
+        };
+      },
+    };
+    const orch = new Orchestrator(client, undefined, { sandbox, sandboxWorkDir: workRoot });
+
+    try {
+      const run = await orch.startRun('spec-1');
+      const repairPrompts: string[] = [];
+      const completer: BlueprintCompleter = {
+        async complete(req) {
+          if (req.promptSummary.startsWith('repair ')) repairPrompts.push(req.prompt);
+          return { text: '// x' };
+        },
+      };
+      await orch.compile(run.id, completer);
+      await expect(orch.requestRegistration(run.id, { name: 'X', version: '0.0.1' })).rejects.toThrow(
+        VerificationFailedError,
+      );
+      expect(verifyCalls).toBe(1);
+      expect(repairPrompts).toHaveLength(0);
+    } finally {
+      await rm(workRoot, { recursive: true, force: true });
+    }
+  });
 });

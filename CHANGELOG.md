@@ -22,6 +22,27 @@ versioning follows [Semantic Versioning](https://semver.org/).
   `/overview` and writes `functions/data/overview.json`, so refreshing the
   public dashboard is sync + `wrangler pages deploy`.
 
+- **Executable verification sandbox wired into `build:real`** (ADR 0010 §4
+  step 2, local flavour). `LocalSandboxRunner` runs install/build/smoke on
+  the host shell (no isolation — dev only; Docker remains the isolated
+  target) and `build:real` selects the runner via `BUILD_SANDBOX`
+  (`auto`/`docker`/`local`/`off`). Four real LLM failure classes the sandbox
+  caught are now fixed at the compiler level: hallucinated dependency
+  versions (fixed caret dependency set per stack), `nextjs-15` peer
+  conflicts (default stack aligned to `ts-service`), markdown-fenced or
+  path-line-prefixed output (`stripCodeFences`), and LLM-written
+  `tsconfig.json` (now deterministic via `generateTsconfig`, like the
+  manifest). sqlite maps to the built-in `node:sqlite` with the exact API
+  surface written into the prompt, and vitest is pinned `^3.2.0` because
+  vitest 2 / vite 5 cannot resolve prefix-only builtins (`node:sqlite`).
+
+- **Targeted sandbox repair loop in the orchestrator.** When a sandbox step
+  fails, the blamed files (parsed from tsc/vitest output) are regenerated
+  through the run's own completer with the exact compiler log in the prompt,
+  then the sandbox re-runs — bounded by `sandboxRepairAttempts` and still
+  inside the run's model budget. 0.4.0 was the first run to pass the gate
+  *because* a repair round healed a broken file.
+
 ### Fixed
 
 - `build-smoke` / `build-real` no longer double-open PGlite: both scripts now
