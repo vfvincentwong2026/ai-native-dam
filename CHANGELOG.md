@@ -25,6 +25,16 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `pnpm smoke:builder` (`scripts/build-smoke.mjs`) — an end-to-end smoke of
+  the ADR 0010 chain against a real PGlite store: boots the gateway
+  in-process (own tokens, random port), walks spec approval → blueprint
+  planning → provenance `apply_skill` → the 9-check verify gate → gated
+  registration, and asserts the registered system carries a non-empty
+  `blueprint_hash` + `verify_report_ref`. No external services, no LLM
+  (stub completer — the gate is structural). Idempotent; `DAM_PG_DATA_DIR`
+  selects the store. This is the script that caught the two wire-seam bugs
+  fixed in this release.
+
 - `Build` scope — the Builder Runtime's narrow principal (ADR 0010 Open
   Question 2 resolved): a fourth scope alongside Suggest/Read/Edit. A
   Build principal sees exactly the §5 whitelist (`search_specs`,

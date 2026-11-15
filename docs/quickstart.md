@@ -35,7 +35,25 @@ pnpm typecheck
 pnpm test
 ```
 
-## 5. Next: full governance plane
+## 5. Smoke the Builder Runtime
+
+The smoke drives the full ADR 0010 chain against a real PGlite governance
+store — spec approval, blueprint planning, provenance `apply_skill`, the
+verify gate, and gated registration — then asserts the registered system
+carries a non-empty `blueprint_hash` + `verify_report_ref`:
+
+```bash
+pnpm build
+pnpm smoke:builder                       # uses .review/pgdata
+DAM_PG_DATA_DIR=/tmp/dam-smoke pnpm smoke:builder   # or a scratch store
+```
+
+No external services and no LLM: the gateway runs in-process with its own
+tokens on a random port, and compilation uses a stub completer because the
+verify gate is structural. The run is idempotent — repeat runs reuse the
+draft/registered records and just re-verify the chain.
+
+## 6. Next: full governance plane
 
 The showcase endpoint is read-only. For write tools (`create_asset`,
 `apply_skill`, `submit_system_spec`), follow `docs/architecture.md` and stand

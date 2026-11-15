@@ -10,6 +10,7 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r build && pnpm -r typecheck",
+    "smoke:builder": "node scripts/build-smoke.mjs",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down"
   },
