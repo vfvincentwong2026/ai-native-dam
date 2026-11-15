@@ -381,7 +381,11 @@ The write path never touches Pages; the dashboard is a **snapshot**, refreshed i
 
 ```bash
 node scripts/sync-overview-snapshot.mjs   # gateway GET /overview → functions/data/overview.json
-npx wrangler pages deploy . --project-name=ai-native-dam --commit-dirty=true
+# Deploy from a clean staging dir — deploying the repo root hits the 20k-file
+# Pages limit (.dam-runs carries per-run node_modules).
+rm -rf .pages-dist && mkdir .pages-dist
+cp index.html README.md .pages-dist/ && cp -r governance functions .pages-dist/
+npx wrangler pages deploy .pages-dist --project-name=ai-native-dam --commit-dirty=true
 ```
 
 The gateway's `GET /overview` endpoint requires a bearer token with the `Read` scope and returns aggregates plus short operational lists only — no secrets, no free-text payloads (see `packages/mcp-gateway/src/overview.ts`).

@@ -16,6 +16,8 @@ venv/
 pgdata/
 miniodata/
 .review/
+.dam-runs/
+.pages-dist/
 data/
 !functions/data/
 .dam-runs/
