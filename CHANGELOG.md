@@ -43,6 +43,14 @@ versioning follows [Semantic Versioning](https://semver.org/).
   inside the run's model budget. 0.4.0 was the first run to pass the gate
   *because* a repair round healed a broken file.
 
+- **`scripts/deploy-local.mjs`** — closes the last governance gap:
+  deployment. Probes a locally running generated system's `/health` first
+  (refuses to register a ghost), then records target → instance → health
+  heartbeat through the gated tools. Idempotent: targets are reused by
+  endpoint, live instances by system×target. First use: the 0.4.0 build
+  (`sys-ee6543aa`) now runs on `tgt-fe623937` (owner laptop) as
+  `inst-f764b366` with a measured health probe.
+
 ### Fixed
 
 - `build-smoke` / `build-real` no longer double-open PGlite: both scripts now
