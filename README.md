@@ -144,6 +144,8 @@ flowchart TB
 
 Design decisions such as retrieval filtering, memory layering, and distillation gating are recorded as ADRs in [`docs/adr/`](./docs/adr/).
 
+**Installing your project into the DAM?** Read [`docs/onboarding.md`](./docs/onboarding.md) — the L1 registration guide: `dam.manifest.yaml` template, the gated MCP registration sequence, per-project gap list, and the hard rules (one gateway, no hardcoded secrets).
+
 ---
 
 ## Tech Stack
