@@ -6,6 +6,22 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Public governance dashboard on Cloudflare Pages.** The repo root now
+  deploys to https://ai-native-dam.pages.dev: `/governance/` renders a
+  read-only governance overview (Skill registry, System Spec approvals,
+  distillation queue, deployment health, asset-rights posture) from a
+  snapshot served by the Pages Function at `/api/overview`.
+- **`GET /overview` on the MCP gateway** — a read-only aggregate endpoint
+  (bearer token with `Read` scope) built purely on the store interfaces,
+  returning status counts and short operational lists (pending approvals,
+  degraded/offline instances) across every governed collection. See
+  `packages/mcp-gateway/src/overview.ts`.
+- **`scripts/sync-overview-snapshot.mjs`** — pulls the gateway's
+  `/overview` and writes `functions/data/overview.json`, so refreshing the
+  public dashboard is sync + `wrangler pages deploy`.
+
 ### Fixed
 
 - `build-smoke` / `build-real` no longer double-open PGlite: both scripts now

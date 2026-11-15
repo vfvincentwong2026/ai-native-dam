@@ -366,50 +366,23 @@ The card carries `name`, `description`, `url`, `version`, `protocolVersion`, `ca
 
 ---
 
-## Deploy on Cloudflare Pages (showcase layer)
+## Public showcase & governance dashboard (Cloudflare Pages)
 
-At this stage the repository has no build step and no running backend. Cloudflare Pages is the right fit for the **public showcase** — connect the Git repo, and every push to `main` redeploys automatically.
+The repository root is deployed to Cloudflare Pages: **https://ai-native-dam.pages.dev**
 
-### 1. Add a minimal `index.html` at the repository root
+- `/` — README showcase page.
+- `/governance/` — public read-only **governance dashboard**: Skill registry counts and pending approvals, System Spec review queue, distillation decision queue, deployment-target/instance health, asset-rights posture. Auto-refreshes every 60 s.
+- `/api/overview` — the snapshot JSON behind the dashboard, served by a Pages Function from `functions/data/overview.json`.
+- `/mcp` — read-only public MCP showcase (`search_assets`, `check_usage_rights`) over a static asset snapshot. The full gateway with all write tools stays on the Docker host.
 
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI-Native DAM</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.6.1/github-markdown.min.css">
-  <style>
-    body { box-sizing: border-box; max-width: 980px; margin: 0 auto; padding: 45px; }
-    @media (max-width: 767px) { body { padding: 15px; } }
-  </style>
-</head>
-<body class="markdown-body">
-  <div id="content">Loading...</div>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script>
-    fetch('/README.md').then(r => r.text()).then(t => {
-      document.getElementById('content').innerHTML = marked.parse(t);
-    });
-  </script>
-</body>
-</html>
+The write path never touches Pages; the dashboard is a **snapshot**, refreshed in two steps:
+
+```bash
+node scripts/sync-overview-snapshot.mjs   # gateway GET /overview → functions/data/overview.json
+npx wrangler pages deploy . --project-name=ai-native-dam --commit-dirty=true
 ```
 
-### 2. Create the Pages project
-
-Cloudflare Dashboard → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git** → select `vfvincentwong2026/ai-native-dam`.
-
-- **Framework preset**: `None`
-- **Build command**: leave empty
-- **Build output directory**: `/`
-
-Deploy. You get `https://ai-native-dam.pages.dev`. Mermaid diagrams will not render in this plain `marked` setup, but badges, tables, links, and headings will.
-
-### 3. Later: Pages Functions for a hosted MCP endpoint
-
-When the MCP gateway is ready, you can expose a **read-only** MCP endpoint directly from Pages without standing up a separate Worker: Cloudflare Pages automatically picks up files under `functions/` and deploys them with the site[reference:8]. Put the MCP handler at `functions/mcp.js`, point a client at `https://ai-native-dam.pages.dev/mcp`, and keep the full runtime on your own Docker host until you are ready to move it to Workers + R2.
+The gateway's `GET /overview` endpoint requires a bearer token with the `Read` scope and returns aggregates plus short operational lists only — no secrets, no free-text payloads (see `packages/mcp-gateway/src/overview.ts`).
 
 ---
 

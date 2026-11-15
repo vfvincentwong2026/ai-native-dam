@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Native DAM · 治理大屏</title>
+<meta name="description" content="AI-Native DAM 治理平面实况：Skill 注册表、System Spec 审批、蒸馏决策队列、部署实例健康。">
+<style>
+  :root {
+    --bg: #0a0e14;
+    --panel: #11161f;
+    --panel-border: #1e2733;
+    --ink: #e6edf3;
+    --ink-dim: #8b98a9;
+    --accent: #39d353;
+    --warn: #d29922;
+    --danger: #f85149;
+    --info: #58a6ff;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px;
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  header h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.04em; }
+  header h1 span { color: var(--accent); font-family: var(--mono); font-weight: 500; }
+  header .meta { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
+  main {
+    display: grid; gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    padding: 24px 32px 40px;
+    max-width: 1440px; margin: 0 auto;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 18px 20px;
+  }
+  .panel h2 {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-dim);
+    margin-bottom: 14px;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .panel h2 .total { font-family: var(--mono); font-size: 22px; color: var(--ink); letter-spacing: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+  .chip {
+    font-family: var(--mono); font-size: 12px;
+    padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--panel-border);
+    color: var(--ink-dim);
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+  .chip.ok b { color: var(--accent); }
+  .chip.warn b { color: var(--warn); }
+  .chip.danger b { color: var(--danger); }
+  .chip.info b { color: var(--info); }
+  ul.rows { list-style: none; margin-top: 10px; }
+  ul.rows li {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 8px 0; border-top: 1px dashed var(--panel-border);
+    font-size: 13px;
+  }
+  ul.rows li .id { font-family: var(--mono); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  ul.rows li .sub { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); flex-shrink: 0; }
+  .empty { font-size: 13px; color: var(--ink-dim); padding: 8px 0; border-top: 1px dashed var(--panel-border); }
+  .error {
+    margin: 24px 32px; padding: 16px 20px;
+    border: 1px solid var(--danger); border-radius: 8px;
+    color: var(--danger); font-family: var(--mono); font-size: 13px;
+  }
+  footer {
+    padding: 16px 32px 28px; color: var(--ink-dim);
+    font-family: var(--mono); font-size: 11px;
+    border-top: 1px solid var(--panel-border);
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1><span>AI-Native DAM</span> · 治理大屏 Governance Overview</h1>
+  <div class="meta" id="meta">loading…</div>
+</header>
+<div id="error"></div>
+<main id="main" style="display:none">
+  <section class="panel" id="p-skills">
+    <h2>Skill 注册表 <span class="total" data-total></span></h2>
+    <div class="chips" data-chips></div>
+    <h2 style="margin-top:14px">待审批</h2>
+    <ul class="rows" data-list="pending_approval"></ul>
+  </section>
+  <section class="panel" id="p-specs">
+    <h2>System Spec <span class="total" data-total></span></h2>
+    <div class="chips" data-chips></div>
+    <h2 style="margin-top:14px">待审批</h2>
+    <ul class="rows" data-list="pending_approval"></ul>
+  </section>
+  <section class="panel" id="p-distill">
+    <h2>蒸馏决策队列 <span class="total" data-total></span></h2>
+    <div class="chips" data-chips></div>
+    <h2 style="margin-top:14px">待人工裁决</h2>
+    <ul class="rows" data-list="awaiting_approval"></ul>
+  </section>
+  <section class="panel" id="p-deploy">
+    <h2>部署平面 <span class="total" data-total></span></h2>
+    <div class="chips" data-chips></div>
+    <h2 style="margin-top:14px">需要关注（degraded / offline）</h2>
+    <ul class="rows" data-list="attention"></ul>
+  </section>
+  <section class="panel" id="p-assets">
+    <h2>资产与权利 <span class="total" data-total></span></h2>
+    <div class="chips" data-chips></div>
+  </section>
+  <section class="panel" id="p-systems">
+    <h2>生成的系统 <span class="total" data-total></span></h2>
+    <div class="chips" data-chips></div>
+  </section>
+</main>
+<footer>
+  AI-Native DAM governance plane · snapshot sync · read-only public view ·
+  <span id="foot-src"></span>
+</footer>
+<script>
+const STATUS_CLASS = {
+  approved: 'ok', active: 'ok', healthy: 'ok', completed: 'ok', Cleared: 'ok', deployed: 'ok',
+  pending_approval: 'warn', awaiting_approval: 'warn', Pending: 'warn', queued: 'warn', draft: 'warn',
+  degraded: 'danger', offline: 'danger', revoked: 'danger', failed: 'danger', rejected: 'danger', Restricted: 'danger', Expired: 'danger',
+  training: 'info', generated: 'info', registered: 'info', Restricted_: 'info'
+};
+
+function chips(el, obj) {
+  el.innerHTML = '';
+  const entries = Object.entries(obj || {});
+  if (!entries.length) { el.innerHTML = '<span class="chip">暂无数据</span>'; return; }
+  for (const [k, v] of entries) {
+    const c = document.createElement('span');
+    c.className = 'chip ' + (STATUS_CLASS[k] || '');
+    c.innerHTML = k + ' <b>' + v + '</b>';
+    el.appendChild(c);
+  }
+}
+
+function rows(panel, key, items, fmt) {
+  const ul = panel.querySelector('[data-list="' + key + '"]');
+  if (!ul) return;
+  ul.innerHTML = '';
+  if (!items || !items.length) {
+    ul.innerHTML = '<li class="empty">无 — 队列已清空 ✓</li>';
+    return;
+  }
+  for (const it of items) {
+    const li = document.createElement('li');
+    const a = document.createElement('span'); a.className = 'id'; a.textContent = fmt.main(it);
+    const b = document.createElement('span'); b.className = 'sub'; b.textContent = fmt.sub(it);
+    li.appendChild(a); li.appendChild(b);
+    ul.appendChild(li);
+  }
+}
+
+function fill(panelId, section, listFmt) {
+  const p = document.getElementById(panelId);
+  p.querySelector('[data-total]').textContent = section.total ?? 0;
+  chips(p.querySelector('[data-chips]'), section.by_status || section.by_kind || section.by_rights_status);
+  if (listFmt) {
+    for (const key of Object.keys(listFmt)) rows(p, key, section[key], listFmt[key]);
+  }
+}
+
+async function load() {
+  const res = await fetch('/api/overview', { cache: 'no-store' });
+  if (!res.ok) throw new Error('/api/overview → HTTP ' + res.status);
+  const o = await res.json();
+
+  document.getElementById('meta').textContent =
+    'snapshot ' + (o.generated_at || '?') + ' · gateway ' + (o.version || '?');
+
+  fill('p-skills', o.skills, {
+    pending_approval: { main: s => s.id + '@' + s.version, sub: s => s.domain }
+  });
+  fill('p-specs', o.specs, {
+    pending_approval: { main: s => s.title || s.id, sub: s => s.business_domain }
+  });
+  fill('p-distill', o.distillations, {
+    awaiting_approval: { main: d => d.source_skill_id, sub: d => 'uses ' + d.usage_count + '/' + d.threshold }
+  });
+
+  const dp = document.getElementById('p-deploy');
+  dp.querySelector('[data-total]').textContent = o.deployments.instances.total;
+  chips(dp.querySelector('[data-chips]'), o.deployments.instances.by_status);
+  rows(dp, 'attention', o.deployments.instances.attention, {
+    main: i => i.system_id + ' @ ' + i.target_id, sub: i => i.status
+  });
+
+  fill('p-assets', {
+    total: o.assets.total,
+    by_rights_status: Object.assign({ 'with rights': o.assets.with_rights }, o.assets.by_rights_status)
+  });
+  fill('p-systems', o.systems);
+
+  document.getElementById('foot-src').textContent = 'source: ' + (o.server || 'ai-native-dam-gateway');
+  document.getElementById('main').style.display = '';
+}
+
+function showError(e) {
+  document.getElementById('error').innerHTML = '';
+  const d = document.createElement('div');
+  d.className = 'error';
+  d.textContent = '快照加载失败：' + e.message;
+  document.getElementById('error').appendChild(d);
+}
+
+load().catch(showError);
+setInterval(() => load().catch(showError), 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+{
+  "server": "ai-native-dam-gateway",
+  "version": "0.1.0",
+  "generated_at": "2026-11-15T08:49:32.293Z",
+  "skills": {
+    "total": 24,
+    "by_status": {
+      "approved": 24
+    },
+    "by_domain": {
+      "content": 5,
+      "ecommerce": 1,
+      "generic": 7,
+      "operations": 8,
+      "short_drama": 3
+    },
+    "pending_approval": []
+  },
+  "specs": {
+    "total": 6,
+    "by_status": {
+      "generated": 5,
+      "approved": 1
+    },
+    "pending_approval": []
+  },
+  "distillations": {
+    "total": 3,
+    "by_status": {
+      "training": 1,
+      "queued": 1,
+      "rejected": 1
+    },
+    "awaiting_approval": []
+  },
+  "systems": {
+    "total": 5,
+    "by_status": {
+      "registered": 5
+    }
+  },
+  "deployments": {
+    "targets": {
+      "total": 0,
+      "by_kind": {}
+    },
+    "instances": {
+      "total": 0,
+      "by_status": {},
+      "attention": []
+    }
+  },
+  "assets": {
+    "total": 0,
+    "with_rights": 0,
+    "by_rights_status": {}
+  },
+  "usage": {
+    "total_records": 0
+  }
+}

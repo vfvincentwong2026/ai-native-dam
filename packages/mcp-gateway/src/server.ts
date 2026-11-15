@@ -6,6 +6,7 @@ import { MemorySkillStore, type SkillStore } from './skill-store.js';
 import { createState, type GatewayState, type StateSeed } from './state.js';
 import { GATEWAY_TOOLS, findGatewayTool, ToolRejection } from './tools.js';
 import { wireToInternal, internalToWire } from './wire.js';
+import { buildOverview } from './overview.js';
 
 export const MCP_PROTOCOL_VERSION = '2024-11-05';
 
@@ -187,6 +188,24 @@ export function createGateway(options: GatewayOptions): Gateway {
 
     if (req.method === 'GET' && req.url === '/health') {
       send(200, { ok: true, server: serverName, version: serverVersion });
+      return;
+    }
+
+    // Read-only aggregate for the governance dashboard / snapshot sync.
+    // Requires any authenticated principal holding the Read scope.
+    if (req.method === 'GET' && req.url === '/overview') {
+      const principal = resolvePrincipal(req.headers.authorization, options.tokens);
+      if (!principal || !principal.scopes.includes('Read')) {
+        send(401, rpcError(null, -32001, 'Unauthorized: /overview requires a valid bearer token with Read scope'));
+        return;
+      }
+      buildOverview({ store, skillStore, serverName, serverVersion }).then(
+        overview => send(200, overview),
+        err => {
+          const message = err instanceof Error ? err.message : 'Internal error';
+          send(500, rpcError(null, -32603, message));
+        },
+      );
       return;
     }
 

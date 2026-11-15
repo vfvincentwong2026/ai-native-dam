@@ -17,3 +17,6 @@ pgdata/
 miniodata/
 .review/
 data/
+!functions/data/
+.dam-runs/
+.wrangler/
