@@ -125,12 +125,23 @@ export class MemoryGovernanceStore implements GovernanceStore {
   }
 
   async searchKnowledge(filter: KnowledgeSearchFilter): Promise<KnowledgeEntry[]> {
+    const limit = filter.limit ?? 10;
+    // Edge fast path: a DoKnowledgeMap carries a searchFts() backed by DO
+    // SQLite FTS5 (trigram) / LIKE — no full hydration or JS substring scan.
+    const km = this.state.knowledge as { searchFts?: (q: string, limit: number) => KnowledgeEntry[] };
+    if (typeof km.searchFts === 'function') {
+      // 多取 4 倍再过滤 layer/status，避免过滤后不足 limit 条
+      return km.searchFts(filter.query, limit * 4)
+        .filter(e => !filter.layer || e.layer === filter.layer)
+        .filter(e => !(filter.onlyApproved ?? true) || e.status === 'approved')
+        .slice(0, limit);
+    }
     const q = filter.query.toLowerCase();
     return [...this.state.knowledge.values()]
       .filter(e => `${e.title} ${e.content}`.toLowerCase().includes(q))
       .filter(e => !filter.layer || e.layer === filter.layer)
       .filter(e => !(filter.onlyApproved ?? true) || e.status === 'approved')
-      .slice(0, filter.limit ?? 10);
+      .slice(0, limit);
   }
 
   async appendSkillUsage(record: SkillUsageRecord): Promise<void> {
