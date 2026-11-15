@@ -16,3 +16,4 @@ venv/
 pgdata/
 miniodata/
 .review/
+data/
