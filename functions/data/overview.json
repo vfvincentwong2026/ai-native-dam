@@ -1,7 +1,7 @@
 {
   "server": "ai-native-dam-gateway",
   "version": "0.1.0",
-  "generated_at": "2026-11-16T04:57:02.710Z",
+  "generated_at": "2026-11-16T06:22:21.227Z",
   "skills": {
     "total": 24,
     "by_status": {
@@ -83,13 +83,20 @@
     ]
   },
   "specs": {
-    "total": 11,
+    "total": 12,
     "by_status": {
-      "generated": 10,
+      "generated": 11,
       "approved": 1
     },
     "pending_approval": [],
     "recent": [
+      {
+        "id": "spec-6d0d802a-d490-4afa-83bc-918b4f53447a",
+        "title": "版权到期预警台",
+        "business_domain": "operations",
+        "status": "generated",
+        "created_at": "2026-11-16T06:12:56.186Z"
+      },
       {
         "id": "spec-202154e1-07cb-49c4-95ff-2cd53bd40bb1",
         "title": "版权到期预警台",
@@ -138,13 +145,6 @@
         "business_domain": "operations",
         "status": "generated",
         "created_at": "2026-11-14T18:11:32.391Z"
-      },
-      {
-        "id": "spec-d1ad26f2-8406-4ba9-8205-33a87b516916",
-        "title": "版权到期预警台",
-        "business_domain": "operations",
-        "status": "generated",
-        "created_at": "2026-11-14T18:07:57.083Z"
       }
     ],
     "list": [
@@ -202,6 +202,11 @@
         "id": "spec-202154e1-07cb-49c4-95ff-2cd53bd40bb1",
         "title": "版权到期预警台",
         "status": "generated"
+      },
+      {
+        "id": "spec-6d0d802a-d490-4afa-83bc-918b4f53447a",
+        "title": "版权到期预警台",
+        "status": "generated"
       }
     ]
   },
@@ -215,11 +220,22 @@
     "awaiting_approval": []
   },
   "systems": {
-    "total": 10,
+    "total": 11,
     "by_status": {
-      "registered": 10
+      "registered": 11
     },
     "recent": [
+      {
+        "id": "sys-2acbbec4-ec28-4a6d-8159-217516929800",
+        "name": "版权到期预警台",
+        "version": "0.6.0",
+        "status": "registered",
+        "created_at": "2026-11-16T06:20:17.875Z",
+        "source_spec_id": "spec-6d0d802a-d490-4afa-83bc-918b4f53447a",
+        "source_skill_ids": [
+          "operations:project-context"
+        ]
+      },
       {
         "id": "sys-20dd1672-ee55-48c7-8ea6-73e9560dc18b",
         "name": "版权到期预警台",
@@ -289,17 +305,6 @@
         "status": "registered",
         "created_at": "2026-11-15T03:58:32.853Z",
         "source_spec_id": "spec-02fd91b7-64db-480a-914a-e1bc457e999b",
-        "source_skill_ids": [
-          "operations:project-context"
-        ]
-      },
-      {
-        "id": "sys-c90ba564-d09a-4773-868f-d8e3c2136dc6",
-        "name": "版权到期预警台",
-        "version": "0.1.0",
-        "status": "registered",
-        "created_at": "2026-11-14T18:11:32.482Z",
-        "source_spec_id": "spec-73e988f2-76c7-4db3-be37-bffa1ce03927",
         "source_skill_ids": [
           "operations:project-context"
         ]
@@ -415,6 +420,18 @@
         "status": "registered",
         "created_at": "2026-11-15T17:34:27.561Z",
         "source_spec_id": "spec-202154e1-07cb-49c4-95ff-2cd53bd40bb1",
+        "source_skill_ids": [
+          "operations:project-context"
+        ],
+        "endpoint_uri": null
+      },
+      {
+        "id": "sys-2acbbec4-ec28-4a6d-8159-217516929800",
+        "name": "版权到期预警台",
+        "version": "0.6.0",
+        "status": "registered",
+        "created_at": "2026-11-16T06:20:17.875Z",
+        "source_spec_id": "spec-6d0d802a-d490-4afa-83bc-918b4f53447a",
         "source_skill_ids": [
           "operations:project-context"
         ],
