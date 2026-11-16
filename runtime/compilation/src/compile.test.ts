@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SystemSpec } from '@ai-native-dam/shared-schema';
-import { executeBlueprint, generateManifest, generateSchema, generateServer, generateTsconfig, isDeterministicPath, planBlueprint, toBuildOutput, verifyBuild, type BlueprintCompleter, type PromptTier } from './index.js';
+import { executeBlueprint, generateConsole, generateManifest, generateSchema, generateServer, generateTsconfig, isDeterministicPath, planBlueprint, toBuildOutput, verifyBuild, type BlueprintCompleter, type PromptTier } from './index.js';
 
 const SPEC: SystemSpec = {
   id: 'spec-0001',
@@ -52,10 +52,10 @@ describe('executeBlueprint', () => {
     const build = await executeBlueprint(blueprint, { runId: 'run-1', completer });
 
     const planned = blueprint.promptPlan;
-    // every item except the five deterministic files goes through the completer
-    expect(calls).toHaveLength(planned.length - 5);
+    // every item except the six deterministic files goes through the completer
+    expect(calls).toHaveLength(planned.length - 6);
     expect(calls.map((c) => c.promptSummary)).toEqual(
-      planned.filter((p) => !['dam.manifest.yaml', 'tsconfig.json', 'src/contract.ts', 'src/schema.ts', 'src/server.ts'].includes(p.file)).map((p) => p.promptSummary),
+      planned.filter((p) => !['dam.manifest.yaml', 'tsconfig.json', 'src/contract.ts', 'src/schema.ts', 'src/server.ts', 'console/index.html'].includes(p.file)).map((p) => p.promptSummary),
     );
     // tiers route as planned: workflow file at C2, review at C3
     const reviewCall = calls.find((c) => c.promptSummary.includes('Cross-module'));
@@ -151,7 +151,7 @@ describe('stripCodeFences', () => {
 
     const build = await executeBlueprint(blueprint, { runId: 'run-fences', completer });
 
-    const generated = build.files.filter((f) => !['dam.manifest.yaml', 'tsconfig.json', 'src/contract.ts', 'src/schema.ts', 'src/server.ts'].includes(f.path));
+    const generated = build.files.filter((f) => !['dam.manifest.yaml', 'tsconfig.json', 'src/contract.ts', 'src/schema.ts', 'src/server.ts', 'console/index.html'].includes(f.path));
     expect(generated.length).toBeGreaterThan(0);
     for (const f of generated) {
       expect(f.content.startsWith('```')).toBe(false);
@@ -193,7 +193,7 @@ describe('stripCodeFences', () => {
 
     const build = await executeBlueprint(blueprint, { runId: 'run-pathline', completer: echoing });
 
-    const generated = build.files.filter((f) => !['dam.manifest.yaml', 'tsconfig.json', 'src/contract.ts', 'src/schema.ts', 'src/server.ts'].includes(f.path));
+    const generated = build.files.filter((f) => !['dam.manifest.yaml', 'tsconfig.json', 'src/contract.ts', 'src/schema.ts', 'src/server.ts', 'console/index.html'].includes(f.path));
     for (const f of generated) {
       expect(f.content.startsWith('```')).toBe(false);
       expect(f.content.split('\n')[0]).not.toBe(f.path);
@@ -225,6 +225,33 @@ describe('generateServer', () => {
     const server = generateServer(planBlueprint(SPEC));
     expect(server).toContain(`import { ensureSchema } from './schema.ts';`);
     expect(server).toContain('ensureSchema(db);');
+  });
+
+  it('serves the generated management console at /console/', () => {
+    const server = generateServer(planBlueprint(SPEC));
+    expect(server).toContain(`'../console/index.html'`);
+    expect(server).toContain(`'/console/'`);
+  });
+});
+
+describe('generateConsole', () => {
+  it('emits a deterministic SPA with one view per entity, wired to fixed route paths', () => {
+    const blueprint = planBlueprint(SPEC);
+    const html = generateConsole(blueprint);
+
+    expect(html).toContain('data-view="drama"');
+    expect(html).toContain(`fetch('/' + current)`);
+    expect(generateConsole(blueprint)).toBe(html);
+    expect(isDeterministicPath('console/index.html')).toBe(true);
+  });
+
+  it('mandates the exact route base path in the route prompt', async () => {
+    const blueprint = planBlueprint(SPEC);
+    const { calls, completer } = fakeCompleter();
+    await executeBlueprint(blueprint, { runId: 'run-path', completer });
+
+    const routeCall = calls.find((c) => c.prompt.includes('Generate the file src/routes/drama.ts'));
+    expect(routeCall?.prompt).toContain('Mount at the EXACT base path "/drama"');
   });
 });
 

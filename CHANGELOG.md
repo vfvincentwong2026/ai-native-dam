@@ -41,6 +41,15 @@ versioning follows [Semantic Versioning](https://semver.org/).
   instance it revokes the system's other live instances on the same target,
   so version cutover is one command instead of a manual revoke pass.
 
+- **Generated management console (`console/index.html`, served at `/console/`).**
+  Every generated system now ships with a deterministic admin SPA: sidebar
+  with one view per entity, generic JSON-table rendering, 30s auto-refresh.
+  Zero LLM tokens — the console is a pure function of the blueprint's entity
+  bindings, exactly like schema.ts. Route base paths are now pinned by the
+  prompt contract (`/<table>`, no plurals/kebab drift — 0.5.0 vs 0.5.1
+  drifted between `/license-alert` and `/license-alerts`) so the console's
+  fetch targets always exist.
+
 ### Added
 
 - **Public governance dashboard on Cloudflare Pages.** The repo root now

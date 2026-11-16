@@ -22,6 +22,7 @@ export { verifyBuild, type BuildOutput, type VerifyCheck, type VerifyReport } fr
 export {
   columnList,
   executeBlueprint,
+  generateConsole,
   generateContract,
   generateSchema,
   generateServer,

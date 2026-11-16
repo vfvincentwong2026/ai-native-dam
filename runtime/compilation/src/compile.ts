@@ -92,7 +92,7 @@ function defaultPrompt(item: PromptPlanItem, blueprint: Blueprint): string {
     // mocks type-check without casts. Relative imports use literal .ts
     // extensions (the service runs under node's native type stripping).
     file?.kind === 'route'
-      ? `Contract: export EXACTLY one entry — \`export const handle: RouteHandle = async (req, res, db) => { ... }\` with \`import type { RouteHandle } from '../contract.ts';\` (relative imports MUST use the literal .ts extension). Match on req.method + req.url, res.writeHead(...).end(body), return true when this module handled the request; return false otherwise. Use the db argument for ALL data access — never open your own DatabaseSync. No server creation, no listen() — the deterministic src/server.ts owns the server.`
+      ? `Contract: export EXACTLY one entry — \`export const handle: RouteHandle = async (req, res, db) => { ... }\` with \`import type { RouteHandle } from '../contract.ts';\` (relative imports MUST use the literal .ts extension). Mount at the EXACT base path "/${file.entity?.table ?? '<table>'}" — list is GET /${file.entity?.table ?? '<table>'}, item is GET /${file.entity?.table ?? '<table>'}/:id, write verbs (POST/PUT/DELETE) only if listed in Purpose. The generated management console calls these exact paths, so no other path spellings (no plurals, no kebab variants). Match on req.method + parsed url pathname, res.writeHead(...).end(body), return true when this module handled the request; return false otherwise. Use the db argument for ALL data access — never open your own DatabaseSync. No server creation, no listen() — the deterministic src/server.ts owns the server.`
       : '',
     file?.kind === 'model'
       ? 'Contract: every exported function takes db: DatabaseSync (type-import from \'node:sqlite\') as its first parameter. NO module-level DatabaseSync, NO getDb() singleton — the caller owns the connection (tests pass an in-memory db; a module-level connection makes tables vanish).'
@@ -293,6 +293,7 @@ export function generateServer(blueprint: Blueprint): string {
   const handlers = routes.map((_, i) => `handle${i}`).join(', ');
   return `${HEADER_COMMENT}
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import type { RouteHandle } from './contract.ts';
 import { ensureSchema } from './schema.ts';
@@ -302,12 +303,19 @@ const db = new DatabaseSync(process.env.DB_PATH ?? 'data.db');
 // Tables are deterministic infrastructure — created here, never by routes.
 ensureSchema(db);
 const handlers: RouteHandle[] = [${handlers}];
+// The management console is a compiler-generated static SPA (console/index.html).
+const consoleHtml = readFileSync(new URL('../console/index.html', import.meta.url), 'utf8');
 
 const server = createServer(async (req, res) => {
   try {
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'healthy' }));
+      return;
+    }
+    if (req.method === 'GET' && (req.url === '/console' || req.url === '/console/')) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(consoleHtml);
       return;
     }
     for (const handle of handlers) {
@@ -326,6 +334,137 @@ server.listen(port, () => console.log(\`listening on :\${port}\`));
 `;
 }
 
+/**
+ * console/index.html — the generated system's management console, emitted
+ * deterministically from the blueprint's entity bindings. Zero LLM tokens:
+ * the UI structure is a pure function of the planned entities, exactly like
+ * schema.ts. It is a generic JSON-table SPA (one view per entity, fetched
+ * from the entity's fixed route path /<slug>) so it stays correct regardless
+ * of the JSON shape the LLM chose for row mapping.
+ */
+export function generateConsole(blueprint: Blueprint): string {
+  const entities = new Map<string, EntityTableSchema>();
+  for (const f of blueprint.files) {
+    if (f.entity && !entities.has(f.entity.table)) entities.set(f.entity.table, f.entity);
+  }
+  const views = [...entities.entries()].map(([table], i) => {
+    const slug = table; // route base path is mandated as /<table> in the route prompt
+    return `    <a class="nav-item${i === 0 ? ' on' : ''}" data-view="${slug}" href="#">▦ ${table}</a>`;
+  }).join('\n');
+  const first = [...entities.keys()][0] ?? '';
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理控制台 · AI-Native DAM Generated System</title>
+<style>
+  :root { --bg:#05080e; --panel:rgba(15,21,32,.78); --line:#1b2534; --line-soft:rgba(27,37,52,.6);
+    --ink:#e9eff7; --dim:#7c8aa0; --faint:#55637a; --green:#2ee59d; --amber:#f0b429; --cyan:#38d5e8;
+    --mono:"SFMono-Regular",Consolas,Menlo,monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);min-height:100vh;display:flex;
+    font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  aside{width:210px;flex:none;border-right:1px solid var(--line);background:rgba(7,12,20,.85);
+    padding:22px 14px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+  .logo{display:flex;align-items:center;gap:10px;padding:0 8px 18px;border-bottom:1px solid var(--line);margin-bottom:12px}
+  .logo .mark{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;
+    background:linear-gradient(135deg,rgba(46,229,157,.22),rgba(79,163,255,.16));
+    border:1px solid rgba(46,229,157,.42);color:var(--green);font-family:var(--mono);font-weight:700}
+  .logo .t{font-size:13.5px;font-weight:650}
+  .logo .t span{color:var(--green);font-family:var(--mono);font-size:9.5px;display:block;letter-spacing:.14em}
+  .nav-item{display:block;padding:9px 12px;border-radius:8px;font-size:12.5px;color:var(--dim);
+    cursor:pointer;text-decoration:none;font-family:var(--mono)}
+  .nav-item.on{background:rgba(46,229,157,.08);color:var(--green)}
+  .demo{margin-top:auto;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--amber);
+    border:1px solid rgba(240,180,41,.4);border-radius:6px;padding:6px 10px;text-align:center}
+  main{flex:1;padding:24px 32px 60px;min-width:0}
+  .top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+  .top h1{font-size:19px;font-weight:650}
+  .top h1 small{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-left:8px}
+  .conn{font-family:var(--mono);font-size:11px;color:var(--dim);display:inline-flex;align-items:center;gap:6px}
+  .conn i{width:8px;height:8px;border-radius:50%;background:#ff5c6c}
+  .conn.ok i{background:var(--green);box-shadow:0 0 8px rgba(46,229,157,.5)}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;
+    display:inline-block;min-width:150px;margin-bottom:16px;position:relative;overflow:hidden}
+  .kpi::after{content:"";position:absolute;inset:auto 0 0 0;height:2px;background:linear-gradient(90deg,var(--green),transparent)}
+  .kpi .l{font-size:10px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+  .kpi .n{font-family:var(--mono);font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--faint);
+    font-weight:500;text-transform:uppercase;padding:11px 13px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:10px 13px;border-bottom:1px solid var(--line-soft);color:var(--dim);font-family:var(--mono);font-size:11.5px}
+  .empty{padding:38px;text-align:center;color:var(--faint);font-size:13px}
+  .foot{margin-top:16px;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .foot code{color:var(--cyan)}
+</style>
+</head>
+<body>
+<aside>
+  <div class="logo"><div class="mark">D</div><div class="t">管理控制台<span>AI-NATIVE DAM · GENERATED</span></div></div>
+${views}
+  <div class="demo">GENERATED SYSTEM</div>
+</aside>
+<main>
+  <div class="top">
+    <h1 id="title">${first}<small>GET /${first}</small></h1>
+    <span class="conn" id="conn"><i></i><span id="connText">连接中…</span></span>
+  </div>
+  <div class="kpi"><div class="l">记录总数</div><div class="n" id="kTotal">–</div></div>
+  <div class="panel" id="panel"><div class="empty">加载中…</div></div>
+  <div class="foot">数据接口：<code id="apiPath">/${first}</code> · 30s 自动刷新 · 界面由 DAM 编译器确定性生成（未经 LLM）</div>
+</main>
+<script>
+(function(){
+  var current = '${first}';
+  function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+  function setConn(ok, t){
+    document.getElementById('conn').className = 'conn' + (ok ? ' ok' : '');
+    document.getElementById('connText').textContent = t;
+  }
+  async function load(){
+    try{
+      var r = await fetch('/' + current);
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      var data = await r.json();
+      var rows = Array.isArray(r) ? r : (Array.isArray(data) ? data : []);
+      setConn(true, 'API 在线');
+      document.getElementById('kTotal').textContent = rows.length;
+      var panel = document.getElementById('panel');
+      if(!rows.length){ panel.innerHTML = '<div class="empty">暂无记录</div>'; return; }
+      var cols = [];
+      rows.forEach(function(row){ Object.keys(row).forEach(function(k){ if(cols.indexOf(k)<0) cols.push(k); }); });
+      var html = '<table><thead><tr>' + cols.map(function(c){ return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>';
+      rows.forEach(function(row){
+        html += '<tr>' + cols.map(function(c){ return '<td>' + esc(row[c] == null ? '' : row[c]) + '</td>'; }).join('') + '</tr>';
+      });
+      panel.innerHTML = html + '</tbody></table>';
+    }catch(e){
+      setConn(false, 'API 离线');
+      document.getElementById('panel').innerHTML = '<div class="empty">接口暂不可用：' + esc(e.message) + '</div>';
+    }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function(a){
+    a.addEventListener('click', function(ev){
+      ev.preventDefault();
+      Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function(x){ x.classList.remove('on'); });
+      a.classList.add('on');
+      current = a.dataset.view;
+      document.getElementById('title').innerHTML = esc(current) + '<small>GET /' + esc(current) + '</small>';
+      document.getElementById('apiPath').textContent = '/' + current;
+      load();
+    });
+  });
+  load();
+  setInterval(load, 30000);
+})();
+</script>
+</body>
+</html>
+`;
+}
+
 const HEADER_COMMENT = `// Deterministic file — generated by the DAM compiler, never by an LLM.`;
 
 /** Files whose content is a pure function of the blueprint. */
@@ -335,6 +474,7 @@ const DETERMINISTIC_FILES: Readonly<Record<string, (blueprint: Blueprint) => str
   'src/contract.ts': () => generateContract(),
   'src/schema.ts': (bp) => generateSchema(bp),
   'src/server.ts': (bp) => generateServer(bp),
+  'console/index.html': (bp) => generateConsole(bp),
 };
 
 /** True when the path is deterministic infrastructure, never LLM output. */

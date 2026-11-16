@@ -194,6 +194,15 @@ function planFiles(
       tier: 'C0',
     },
     {
+      path: 'console/index.html',
+      kind: 'core',
+      module: 'core',
+      purpose:
+        'Deterministic management console SPA (never LLM-generated): sidebar + one generic JSON-table ' +
+        'view per entity, fetched from the fixed route path /<table>; served by server.ts at /console/',
+      tier: 'C0',
+    },
+    {
       path: 'README.md',
       kind: 'doc',
       module: 'core',
