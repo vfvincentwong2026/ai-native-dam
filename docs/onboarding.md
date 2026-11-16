@@ -81,13 +81,22 @@ spec:
 5. register_deployment_target  登记部署目标(云/边缘/本地)(gated)
 6. register_deployed_instance  登记运行实例(gated)
 7. record_instance_health      打第一次健康心跳
+8. 挂上心跳定时任务            此后每 15 分钟自动 record_instance_health(见 §3.1)
 ```
 
 幂等要求:重复跑你的接入脚本不得产生重复注册——先查(`search_specs` /
 `search_deployments`)再注册。
 
+### 3.1 心跳是义务,不是可选项
+
+实例登记后,你必须在自己的仓库里挂一个**每 15 分钟**的定时调用
+`record_instance_health`(上报 status + 关键 metrics)。大屏和治理裁决把
+心跳当作"活着"的唯一证据:**超过 1 小时无心跳的实例会被视为失联**,
+管理员可以据此发起降级或吊销。心跳数据只走 `record_instance_health`,
+不要自己发明旁路上报。
+
 完成后自检:打开 https://ai-native-dam.pages.dev/governance/ ,
-下次快照刷新后你的系统应出现在「生成的系统」和「部署平面」里;
+下次快照刷新后你的系统应出现在「托管项目矩阵」里;
 或直接 `GET http://127.0.0.1:8080/overview`(带 Read 令牌)确认计数。
 
 ## 4. 各项目当前差距(2026-11-15 体检)
