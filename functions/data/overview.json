@@ -1,7 +1,7 @@
 {
   "server": "ai-native-dam-gateway",
   "version": "0.1.0",
-  "generated_at": "2026-11-15T17:52:15.438Z",
+  "generated_at": "2026-11-16T04:57:02.710Z",
   "skills": {
     "total": 24,
     "by_status": {
@@ -315,7 +315,8 @@
         "source_spec_id": "spec-cb7a6416-7d79-4c8a-8468-cd07994eeda2",
         "source_skill_ids": [
           "operations:project-context"
-        ]
+        ],
+        "endpoint_uri": null
       },
       {
         "id": "sys-a136a8f7-1f12-4f79-9164-1943e33d92b5",
@@ -324,7 +325,8 @@
         "status": "registered",
         "created_at": "2026-11-13T10:28:20.677Z",
         "source_spec_id": "spec-96b35371-1717-4faf-99b6-f37695ab0a45",
-        "source_skill_ids": []
+        "source_skill_ids": [],
+        "endpoint_uri": null
       },
       {
         "id": "sys-c90ba564-d09a-4773-868f-d8e3c2136dc6",
@@ -335,7 +337,8 @@
         "source_spec_id": "spec-73e988f2-76c7-4db3-be37-bffa1ce03927",
         "source_skill_ids": [
           "operations:project-context"
-        ]
+        ],
+        "endpoint_uri": null
       },
       {
         "id": "sys-d03bb96c-7a44-432e-9cfe-007133405467",
@@ -346,7 +349,8 @@
         "source_spec_id": "spec-02fd91b7-64db-480a-914a-e1bc457e999b",
         "source_skill_ids": [
           "operations:project-context"
-        ]
+        ],
+        "endpoint_uri": null
       },
       {
         "id": "sys-9c8b9060-3e0e-449d-8760-d0dbe17aecb5",
@@ -357,7 +361,8 @@
         "source_spec_id": "spec-b909b072-5ab3-4ee1-8d9b-45eeea3d4bcd",
         "source_skill_ids": [
           "operations:project-context"
-        ]
+        ],
+        "endpoint_uri": null
       },
       {
         "id": "sys-ee6543aa-3b90-4be1-9333-78df6e0cabb6",
@@ -368,7 +373,8 @@
         "source_spec_id": "spec-d1ad26f2-8406-4ba9-8205-33a87b516916",
         "source_skill_ids": [
           "operations:project-context"
-        ]
+        ],
+        "endpoint_uri": null
       },
       {
         "id": "sys-355a2799-1d9c-424b-804b-316488fbd5f4",
@@ -377,7 +383,8 @@
         "status": "registered",
         "created_at": "2026-11-15T12:19:11.905Z",
         "source_spec_id": "spec-77e9e64d-262b-4df8-995a-ed63edcaced2",
-        "source_skill_ids": []
+        "source_skill_ids": [],
+        "endpoint_uri": "http://localhost:8000"
       },
       {
         "id": "sys-d21ef785-a786-4014-b28e-9b67861261f1",
@@ -386,7 +393,8 @@
         "status": "registered",
         "created_at": "2026-11-15T14:30:52.510Z",
         "source_spec_id": "spec-0644d4db-4bba-4438-8787-5e73d0792b9a",
-        "source_skill_ids": []
+        "source_skill_ids": [],
+        "endpoint_uri": "http://129.226.93.27:8787/mcp"
       },
       {
         "id": "sys-06369e1d-5bdc-42b1-a679-ed66078b0ed3",
@@ -397,7 +405,8 @@
         "source_spec_id": "spec-e20c0cda-8196-452b-bb6c-d1173e8fc223",
         "source_skill_ids": [
           "operations:project-context"
-        ]
+        ],
+        "endpoint_uri": null
       },
       {
         "id": "sys-20dd1672-ee55-48c7-8ea6-73e9560dc18b",
@@ -408,7 +417,8 @@
         "source_spec_id": "spec-202154e1-07cb-49c4-95ff-2cd53bd40bb1",
         "source_skill_ids": [
           "operations:project-context"
-        ]
+        ],
+        "endpoint_uri": null
       }
     ]
   },
@@ -428,21 +438,24 @@
           "name": "owner-laptop (local dev)",
           "kind": "onprem",
           "status": "active",
-          "region": null
+          "region": null,
+          "endpoint_uri": "http://localhost:3000"
         },
         {
           "id": "tgt-dd27eef7-c3a1-4dfa-a374-7815b25968bc",
           "name": "owner-laptop (Video Batch ID unit)",
           "kind": "onprem",
           "status": "active",
-          "region": null
+          "region": null,
+          "endpoint_uri": "http://localhost:8000"
         },
         {
           "id": "tgt-db3c6a6c-df95-4dee-95c8-89357e195be4",
           "name": "tf-cloud-2c2g",
           "kind": "cloud",
           "status": "active",
-          "region": "tencent-cloud"
+          "region": "tencent-cloud",
+          "endpoint_uri": "http://129.226.93.27:8787"
         }
       ]
     },

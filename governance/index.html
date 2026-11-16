@@ -135,6 +135,14 @@
   .proj .versions .vchip.latest { color: var(--green); border-color: rgba(46,229,157,.45); background: rgba(46,229,157,.07); }
   .proj .skills-line { margin-top: 10px; font-family: var(--mono); font-size: 11px; color: var(--dim); }
   .proj .skills-line b { color: var(--cyan); font-weight: 600; }
+  .proj .p-open {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em;
+    color: var(--cyan); text-decoration: none;
+    border: 1px solid rgba(56,213,232,.4); border-radius: 999px;
+    padding: 3px 12px; transition: background .15s, border-color .15s;
+  }
+  .proj .p-open:hover { background: rgba(56,213,232,.1); border-color: var(--cyan); }
 
   /* ── 队列与分析面板 ────────────────────── */
   main {
@@ -377,6 +385,15 @@ function renderProjects(o) {
     const tgt = inst ? targetName[inst.target_id] : null;
     const specT = latest.source_spec_id ? (specTitle[latest.source_spec_id] || latest.source_spec_id) : null;
     const skillIds = [...new Set(versions.flatMap(v => v.source_skill_ids || []))];
+    // 应用入口:优先取最新版本登记的 endpoint,回落到部署目标的 endpoint
+    const appUrl = latest.endpoint_uri || (tgt && tgt.endpoint_uri) || null;
+    // 心跳新鲜度:绿 <15min,黄 15-60min,红 失联
+    let hbDot = '';
+    if (inst && inst.last_health_at) {
+      const mins = (Date.now() - new Date(inst.last_health_at).getTime()) / 60000;
+      const hb = mins < 15 ? '#2ee59d' : mins < 60 ? '#f0b429' : '#ff5c6c';
+      hbDot = `<span class="dot" style="background:${hb}"></span>`;
+    }
 
     const card = document.createElement('div');
     card.className = 'proj';
@@ -384,7 +401,10 @@ function renderProjects(o) {
     card.innerHTML = `
       <div class="p-head">
         <div class="p-name">${esc(name)}<span class="ver">v${esc(latest.version)}</span></div>
-        <span class="p-status" style="color:${color(latest.status)};border-color:${color(latest.status)}55">${esc(latest.status)}</span>
+        <div style="display:flex;align-items:center;gap:10px;flex:none">
+          ${appUrl ? `<a class="p-open" href="${esc(appUrl)}" target="_blank" rel="noopener">打开应用 →</a>` : ''}
+          <span class="p-status" style="color:${color(latest.status)};border-color:${color(latest.status)}55">${esc(latest.status)}</span>
+        </div>
       </div>
       <div class="p-meta">${esc(latest.id)} · 最新登记 ${esc(time(latest.created_at))}</div>
       <div class="p-grid">
@@ -392,7 +412,7 @@ function renderProjects(o) {
           inst ? `<span class="dot" style="background:${color(inst.status)}"></span>${esc(inst.status)}` : '<span style="color:var(--faint)">未部署</span>'
         }</div></div>
         <div class="cell"><div class="k">部署目标</div><div class="v">${tgt ? esc(tgt.name) + ' · ' + esc(tgt.kind) : '—'}</div></div>
-        <div class="cell"><div class="k">最近心跳</div><div class="v">${inst && inst.last_health_at ? esc(time(inst.last_health_at)) : '—'}</div></div>
+        <div class="cell"><div class="k">最近心跳</div><div class="v">${inst && inst.last_health_at ? hbDot + esc(time(inst.last_health_at)) : '—'}</div></div>
         <div class="cell"><div class="k">来源 Spec</div><div class="v" title="${esc(specT || '')}">${specT ? esc(specT) : '—'}</div></div>
       </div>
       <div class="versions">${versions.map(v =>

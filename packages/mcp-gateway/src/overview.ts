@@ -113,6 +113,7 @@ export async function buildOverview(deps: OverviewDeps) {
         created_at: s.createdAt,
         source_spec_id: s.sourceSpecId,
         source_skill_ids: s.sourceSkillIds,
+        endpoint_uri: s.endpointUri,
       })),
     },
     deployments: {
@@ -120,7 +121,7 @@ export async function buildOverview(deps: OverviewDeps) {
         total: targets.length,
         by_kind: countBy(targets, t => t.kind),
         by_status: countBy(targets, t => t.status),
-        list: targets.map(t => ({ id: t.id, name: t.name, kind: t.kind, status: t.status, region: t.region })),
+        list: targets.map(t => ({ id: t.id, name: t.name, kind: t.kind, status: t.status, region: t.region, endpoint_uri: t.endpointUri })),
       },
       instances: {
         total: instances.length,
