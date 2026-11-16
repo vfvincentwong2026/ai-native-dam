@@ -1,7 +1,7 @@
 {
   "server": "ai-native-dam-gateway",
   "version": "0.1.0",
-  "generated_at": "2026-11-16T06:22:21.227Z",
+  "generated_at": "2026-11-16T06:52:23.780Z",
   "skills": {
     "total": 24,
     "by_status": {
@@ -477,19 +477,27 @@
       ]
     },
     "instances": {
-      "total": 4,
+      "total": 5,
       "by_status": {
-        "revoked": 1,
+        "revoked": 2,
         "deployed": 3
       },
       "attention": [],
       "recent": [
         {
+          "id": "inst-13104aa3-34c1-40a7-b2a8-95b2249cb1a8",
+          "system_id": "sys-2acbbec4-ec28-4a6d-8159-217516929800",
+          "target_id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
+          "version": "0.6.0",
+          "status": "deployed",
+          "last_health_at": "2026-11-16T06:26:36.494Z"
+        },
+        {
           "id": "inst-dae2c274-aebe-4541-a4b7-ee1e98dbfc39",
           "system_id": "sys-20dd1672-ee55-48c7-8ea6-73e9560dc18b",
           "target_id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
           "version": "0.5.1",
-          "status": "deployed",
+          "status": "revoked",
           "last_health_at": "2026-11-15T17:37:58.845Z"
         },
         {
@@ -547,8 +555,16 @@
           "system_id": "sys-20dd1672-ee55-48c7-8ea6-73e9560dc18b",
           "target_id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
           "version": "0.5.1",
-          "status": "deployed",
+          "status": "revoked",
           "last_health_at": "2026-11-15T17:37:58.845Z"
+        },
+        {
+          "id": "inst-13104aa3-34c1-40a7-b2a8-95b2249cb1a8",
+          "system_id": "sys-2acbbec4-ec28-4a6d-8159-217516929800",
+          "target_id": "tgt-fe623937-36df-42db-bd95-b1a5105453eb",
+          "version": "0.6.0",
+          "status": "deployed",
+          "last_health_at": "2026-11-16T06:26:36.494Z"
         }
       ]
     }
