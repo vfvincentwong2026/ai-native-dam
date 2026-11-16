@@ -423,10 +423,11 @@
       <div class="row out">{"status":"healthy"}</div>
       <div class="row gap"></div>
       <div class="row cmd">curl http://localhost:3000/license-alerts</div>
-      <div class="row out">[]  <span class="out dim"># 预警清单 —— 表已由编译器确定性建好，开箱即可读写</span></div>
+      <div class="row out">[{"id":"demo-3301","assetId":"asset-3301 《江城往事》EP12","expiresAt":"2026-11-19T00:00:00Z","alertLevel":"urgent"}, …]</div>
+      <div class="row out dim"># 5 条预警（2 条重点 / 3 条观察）—— 表由编译器确定性建好，数据开箱即可查询</div>
       <div class="row gap"></div>
       <div class="row cmd">curl http://localhost:3000/nonexistent</div>
-      <div class="row out dim">{"error":"not_found"}  <span class="out dim"># 路由契约一致：未匹配的路径一律 404</span></div>
+      <div class="row out dim">{"error":"not_found"}  # 路由契约一致：未匹配的路径一律 404</div>
     </div>
   </div>
   <div class="journey" style="margin-top:16px">
