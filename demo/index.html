@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在线演示 · AI-Native DAM — 亲手走一遍：需求 → 系统上线</title>
+<meta name="description" content="AI-Native DAM 交互演示沙箱：亲手体验从一句需求到系统上线的完整流水线 —— 起草规格、审批、构建验证、注册部署、用上系统。无需注册登录。">
+<style>
+  :root {
+    --bg: #05080e;
+    --panel: rgba(15, 21, 32, 0.78);
+    --line: #1b2534;
+    --line-soft: rgba(27, 37, 52, 0.6);
+    --ink: #e9eff7;
+    --dim: #7c8aa0;
+    --faint: #55637a;
+    --green: #2ee59d;
+    --amber: #f0b429;
+    --red: #ff5c6c;
+    --blue: #4fa3ff;
+    --violet: #9d7bff;
+    --cyan: #38d5e8;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(1000px 480px at 88% -8%, rgba(46,229,157,.07), transparent 62%),
+      radial-gradient(860px 520px at -5% 108%, rgba(79,163,255,.06), transparent 62%),
+      linear-gradient(rgba(27,37,52,.32) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(27,37,52,.32) 1px, transparent 1px);
+    background-size: auto, auto, 46px 46px, 46px 46px;
+  }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 40px;
+    background: rgba(5,8,14,.82); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .brand .logo {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: linear-gradient(135deg, rgba(46,229,157,.22), rgba(79,163,255,.16));
+    border: 1px solid rgba(46,229,157,.42);
+    display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 700; color: var(--green); font-size: 14px;
+  }
+  .brand .name { font-size: 16px; font-weight: 650; }
+  .brand .name span { color: var(--green); font-family: var(--mono); font-weight: 600; }
+  .nav-links { display: flex; align-items: center; gap: 22px; font-size: 13.5px; }
+  .nav-links a { color: var(--dim); }
+  .nav-links a:hover { color: var(--ink); text-decoration: none; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 13.5px; font-weight: 600;
+    border: 1px solid transparent; cursor: pointer;
+    font-family: inherit;
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s;
+  }
+  .btn:hover:not(:disabled) { text-decoration: none; transform: translateY(-1px); }
+  .btn:disabled { opacity: .38; cursor: not-allowed; }
+  .btn-primary {
+    background: linear-gradient(135deg, rgba(46,229,157,.92), rgba(56,213,232,.85));
+    color: #04120c;
+    box-shadow: 0 4px 22px rgba(46,229,157,.25);
+  }
+  .btn-ghost { border-color: var(--line); color: var(--ink); background: var(--panel); }
+  .btn-danger { border-color: rgba(255,92,108,.45); color: var(--red); background: rgba(255,92,108,.07); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 32px 90px; }
+
+  .demo-banner {
+    display: flex; align-items: center; gap: 12px;
+    border: 1px solid rgba(240,180,41,.4); background: rgba(240,180,41,.06);
+    border-radius: 10px; padding: 12px 18px;
+    font-size: 12.5px; color: var(--amber); line-height: 1.6;
+    margin-bottom: 34px;
+  }
+  .demo-banner b { color: var(--amber); }
+
+  /* step rail */
+  .rail { display: flex; gap: 8px; margin-bottom: 34px; }
+  .rail .stop {
+    flex: 1; text-align: center; padding: 10px 6px 9px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--panel);
+    font-family: var(--mono); font-size: 11px; color: var(--faint);
+    letter-spacing: .08em; transition: all .25s ease;
+  }
+  .rail .stop-name { display: block; font-family: inherit; font-size: 12.5px; letter-spacing: 0; margin-top: 3px; color: var(--dim); }
+  .rail .on { border-color: rgba(46,229,157,.5); color: var(--green); box-shadow: 0 0 18px rgba(46,229,157,.12); }
+  .rail .on .stop-name { color: var(--ink); }
+  .rail .done { border-color: var(--line); color: var(--faint); }
+  .rail .done .stop-name { color: var(--faint); text-decoration: line-through; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 28px 30px;
+  }
+  .card h2 { font-size: 21px; font-weight: 650; margin-bottom: 6px; }
+  .card .hint { color: var(--dim); font-size: 13.5px; line-height: 1.7; margin-bottom: 20px; }
+  .card .actions { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+  /* step 1: requirement */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip {
+    font-size: 12px; color: var(--dim); cursor: pointer;
+    border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px;
+    background: transparent; font-family: inherit; transition: all .15s;
+  }
+  .chip:hover { border-color: var(--faint); color: var(--ink); }
+  textarea {
+    width: 100%; min-height: 110px; resize: vertical;
+    background: #070c14; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; font-size: 14px; line-height: 1.7;
+    font-family: inherit; outline: none;
+  }
+  textarea:focus { border-color: rgba(46,229,157,.5); }
+
+  /* step 2: spec review */
+  .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .spec-grid { grid-template-columns: 1fr; } }
+  .spec-block {
+    background: #070c14; border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; font-size: 13px;
+  }
+  .spec-block .t { font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; color: var(--faint); text-transform: uppercase; margin-bottom: 10px; }
+  .spec-block table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  .spec-block th { text-align: left; color: var(--faint); font-weight: 500; padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); }
+  .spec-block td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line-soft); color: var(--dim); }
+  .spec-block td:first-child { color: var(--cyan); }
+  .spec-block .wf { padding: 7px 0; border-bottom: 1px solid var(--line-soft); color: var(--dim); font-size: 12.5px; }
+  .spec-block .wf:last-child { border-bottom: none; }
+  .spec-block .wf::before { content: "↻ "; color: var(--violet); }
+  .approve-note {
+    margin-top: 16px; font-size: 12.5px; color: var(--faint); line-height: 1.7;
+    border-left: 2px solid var(--amber); padding-left: 12px;
+  }
+
+  /* step 3: pipeline run */
+  .stages { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 18px; }
+  @media (max-width: 760px) { .stages { grid-template-columns: repeat(3, 1fr); } }
+  .stg {
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px 10px;
+    background: #070c14; font-size: 12px; color: var(--faint);
+    font-family: var(--mono); transition: all .25s ease;
+  }
+  .stg .s-name { font-family: inherit; font-size: 12.5px; font-weight: 600; color: inherit; }
+  .stg.running { border-color: rgba(240,180,41,.55); color: var(--amber); }
+  .stg.ok { border-color: rgba(46,229,157,.45); color: var(--green); }
+  .runlog {
+    background: #05080e; border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 20px; font-family: var(--mono); font-size: 12px; line-height: 1.9;
+    min-height: 220px; max-height: 300px; overflow-y: auto; color: var(--dim);
+  }
+  .runlog .ok { color: var(--green); }
+  .runlog .dim { color: var(--faint); }
+  .runlog .hl { color: var(--cyan); }
+  .runlog .warn { color: var(--amber); }
+
+  /* step 4: the app */
+  .appshell { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .appbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 20px; background: #070c14; border-bottom: 1px solid var(--line);
+  }
+  .appbar .t { font-size: 14px; font-weight: 650; }
+  .appbar .t span { color: var(--green); font-family: var(--mono); font-size: 11px; margin-left: 8px; }
+  .appbar .pill { font-family: var(--mono); font-size: 10.5px; color: var(--green); border: 1px solid rgba(46,229,157,.4); border-radius: 999px; padding: 3px 10px; }
+  .filters { display: flex; gap: 8px; padding: 14px 20px 0; }
+  .fbtn {
+    font-family: var(--mono); font-size: 11.5px; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 13px;
+    background: transparent; color: var(--dim); transition: all .15s;
+  }
+  .fbtn.on { border-color: rgba(46,229,157,.5); color: var(--green); background: rgba(46,229,157,.06); }
+  .apptable { padding: 14px 20px 20px; }
+  .apptable table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .apptable th {
+    text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em;
+    color: var(--faint); font-weight: 500; text-transform: uppercase;
+    padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line);
+  }
+  .apptable td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line-soft); color: var(--dim); }
+  .apptable td.mono { font-family: var(--mono); font-size: 12px; }
+  .lv { font-family: var(--mono); font-size: 10.5px; padding: 2px 9px; border-radius: 4px; }
+  .lv.urgent { color: var(--red); border: 1px solid rgba(255,92,108,.4); background: rgba(255,92,108,.07); }
+  .lv.watch { color: var(--amber); border: 1px solid rgba(240,180,41,.4); background: rgba(240,180,41,.07); }
+  .days { font-family: var(--mono); }
+  .days.urgent { color: var(--red); }
+  .days.watch { color: var(--amber); }
+  .api-toggle {
+    margin: 0 20px 20px; border-top: 1px solid var(--line-soft); padding-top: 14px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--faint); line-height: 1.9;
+  }
+  .api-toggle code { color: var(--cyan); }
+  .api-toggle .out { color: var(--green); }
+
+  .after-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 22px; }
+  @media (max-width: 700px) { .after-links { grid-template-columns: 1fr; } }
+  .alink {
+    border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px;
+    background: var(--panel); display: block;
+  }
+  .alink:hover { text-decoration: none; border-color: var(--faint); }
+  .alink .t { font-size: 13.5px; font-weight: 650; color: var(--ink); }
+  .alink .d { font-size: 12px; color: var(--dim); margin-top: 5px; line-height: 1.6; }
+
+  .hidden { display: none; }
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 24px 40px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--faint);
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">
+    <div class="logo">D</div>
+    <div class="name">AI-Native <span>DAM</span></div>
+  </div>
+  <div class="nav-links">
+    <a href="/">产品首页</a>
+    <a href="/governance/">治理大屏</a>
+    <a class="btn btn-ghost" href="https://github.com/vfvincentwong2026/ai-native-dam">GitHub</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <div class="demo-banner">
+    ⚠ <span><b>演示沙箱 · 无需注册登录。</b>你在和一个浏览器内的交互演示交互，数据为演示样本；
+    真实系统的运行实况请见 <a href="/governance/" style="color:var(--amber)">治理大屏</a>（实时数据）。</span>
+  </div>
+
+  <div class="rail">
+    <div class="stop on" id="rail-1">STEP 1<span class="stop-name">提需求</span></div>
+    <div class="stop" id="rail-2">STEP 2<span class="stop-name">审批规格</span></div>
+    <div class="stop" id="rail-3">STEP 3<span class="stop-name">流水线构建</span></div>
+    <div class="stop" id="rail-4">STEP 4<span class="stop-name">用上系统</span></div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="card" id="step-1">
+    <h2>第一步：说人话，提需求</h2>
+    <p class="hint">不需要写代码、不需要画原型。像跟同事说话一样描述你要什么 —— 流水线会把它落成一份结构化规格书给你审批。</p>
+    <div class="chips">
+      <button class="chip" data-req="每日扫描素材库版权到期日：到期前 30 天列入观察清单、前 7 天升级为重点预警；输出待续约/待下架两条处置队列，运营同学按队列处理并回填结果。">📋 版权到期预警（真实案例）</button>
+      <button class="chip" data-req="每周一早上汇总各渠道的内容播放量，环比跌幅超过 20% 的栏目生成复盘任务，指派给对应负责人。">📉 播放量异常复盘</button>
+      <button class="chip" data-req="供应商合同到期前 45 天提醒采购，支持按合同金额分级：50 万以上的同步通知法务复核。">📑 合同到期提醒</button>
+    </div>
+    <textarea id="req">每日扫描素材库版权到期日：到期前 30 天列入观察清单、前 7 天升级为重点预警；输出待续约/待下架两条处置队列，运营同学按队列处理并回填结果。</textarea>
+    <div class="actions">
+      <button class="btn btn-primary" id="to-spec">生成规格书 →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="card hidden" id="step-2">
+    <h2>第二步：审批规格书（人类门禁）</h2>
+      <p class="hint">AI 把你的需求结构化成 System Spec —— 实体、字段、权限、工作流。<b style="color:var(--ink)">你点头，流水线才会动工。</b>这就是治理的起点：没有审批过的 Spec，就没有后面的任何代码。</p>
+    <div class="spec-grid">
+      <div class="spec-block">
+        <div class="t">Entity · license_alert（预警记录）</div>
+        <table>
+          <tr><th>字段</th><th>类型</th><th>必填</th></tr>
+          <tr><td>id</td><td>string</td><td>是</td></tr>
+          <tr><td>asset_id</td><td>string</td><td>是</td></tr>
+          <tr><td>expires_at</td><td>datetime</td><td>是</td></tr>
+          <tr><td>alert_level</td><td>string</td><td>是</td></tr>
+        </table>
+        <div style="margin-top:10px; font-family:var(--mono); font-size:11px; color:var(--faint)">权限：read · write（决定生成哪些 API 端点）</div>
+      </div>
+      <div class="spec-block">
+        <div class="t">Workflows · 自动化工作流</div>
+        <div class="wf">每日扫描：到期前 30 天列入观察清单</div>
+        <div class="wf">到期前 7 天自动升级为重点预警</div>
+        <div class="wf">输出「待续约 / 待下架」两条处置队列</div>
+        <div style="margin-top:10px; font-family:var(--mono); font-size:11px; color:var(--faint)">存储：sqlite · 本地优先，零外部依赖</div>
+      </div>
+    </div>
+    <div class="approve-note">真实环境里，这一步由持有 Edit 令牌的审批人通过 MCP 两段式闸门完成 —— 批准动作本身也留痕。</div>
+    <div class="actions">
+      <button class="btn btn-primary" id="approve">✓ 批准，开始构建</button>
+      <button class="btn btn-danger" id="reject">✕ 驳回重做</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="card hidden" id="step-3">
+    <h2>第三步：流水线开工（约 10 分钟，这里加速演示）</h2>
+    <p class="hint">规格确定性编译成蓝图，模型分级生成代码，沙箱真实安装/构建/跑测试，13 项门禁全过才允许注册。</p>
+    <div class="stages">
+      <div class="stg" id="stg-1"><div>①</div><div class="s-name">编译蓝图</div></div>
+      <div class="stg" id="stg-2"><div>②</div><div class="s-name">生成代码</div></div>
+      <div class="stg" id="stg-3"><div>③</div><div class="s-name">安装构建</div></div>
+      <div class="stg" id="stg-4"><div>④</div><div class="s-name">沙箱测试</div></div>
+      <div class="stg" id="stg-5"><div>⑤</div><div class="s-name">门禁验证</div></div>
+      <div class="stg" id="stg-6"><div>⑥</div><div class="s-name">注册部署</div></div>
+    </div>
+    <div class="runlog" id="runlog"><div class="dim">等待开始…</div></div>
+    <div class="actions">
+      <button class="btn btn-primary hidden" id="to-app">系统已上线，打开看看 →</button>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="card hidden" id="step-4">
+    <h2>第四步：系统在你手上了</h2>
+    <p class="hint">这就是流水线交付的东西 —— 一个正在运行的服务。下面是它的操作界面（演示数据），以及等价的 API。</p>
+    <div class="appshell">
+      <div class="appbar">
+        <div class="t">版权到期预警台 <span>v1.0.0-demo</span></div>
+        <div class="pill">● healthy</div>
+      </div>
+      <div class="filters">
+        <button class="fbtn on" data-f="all">全部</button>
+        <button class="fbtn" data-f="urgent">重点预警</button>
+        <button class="fbtn" data-f="watch">观察清单</button>
+      </div>
+      <div class="apptable">
+        <table>
+          <thead><tr><th>素材</th><th>到期日</th><th>剩余</th><th>级别</th><th>处置队列</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="api-toggle">
+        等价 API：<code>GET /license-alerts?level=urgent</code> → <span class="out">200 [{…}]</span>
+        　·　<code>GET /health</code> → <span class="out">{"status":"healthy"}</span>
+      </div>
+    </div>
+    <div class="after-links">
+      <a class="alink" href="/governance/">
+        <div class="t">📊 在治理大屏找到它</div>
+        <div class="d">真实系统的注册记录、蓝图哈希、部署实例、健康心跳都在大屏上 —— 实时数据，随时审计。</div>
+      </a>
+      <a class="alink" href="https://github.com/vfvincentwong2026/ai-native-dam">
+        <div class="t">🛠 自己跑一遍真的</div>
+        <div class="d">git clone 后 pnpm build:real —— 你刚才点的每一步，都是真实流水线里真实发生的事。</div>
+      </a>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="restart">↺ 再走一遍</button>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span>AI-Native DAM · 在线演示沙箱</span>
+  <span><a href="/">产品首页</a> · <a href="/governance/">治理大屏</a> · 演示数据为样本</span>
+</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var steps = [1, 2, 3, 4];
+  function goto(n) {
+    steps.forEach(function (i) {
+      $('step-' + i).classList.toggle('hidden', i !== n);
+      var r = $('rail-' + i);
+      r.classList.toggle('on', i === n);
+      r.classList.toggle('done', i < n);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Step 1: preset chips fill the textarea
+  Array.prototype.forEach.call(document.querySelectorAll('.chip'), function (c) {
+    c.addEventListener('click', function () { $('req').value = c.dataset.req; });
+  });
+  $('to-spec').addEventListener('click', function () { goto(2); });
+
+  // Step 2
+  $('approve').addEventListener('click', function () { goto(3); runPipeline(); });
+  $('reject').addEventListener('click', function () { goto(1); });
+
+  // Step 3: simulated pipeline with real-world log lines (from actual 0.5.1 run)
+  var SCRIPT = [
+    { stg: 1, lines: [
+      ['dim', '[plan] spec approved → compiling blueprint (deterministic)…'],
+      ['hl',  '[plan] blueprint bp-0cfff983c1cd — 12 files, hash pinned'],
+    ]},
+    { stg: 2, lines: [
+      ['dim', '[build] C0–C3 tiered routing, budget: 25 calls / 200k tokens'],
+      ['dim', '[build] deterministic: dam.manifest.yaml · tsconfig · contract.ts · schema.ts · server.ts'],
+      ['hl',  '[build] ledger: 8 calls, 3927 in / 18896 out tokens, 0 failed'],
+    ]},
+    { stg: 3, lines: [
+      ['dim', '[sandbox] pnpm install … 37 packages, lockfile ok'],
+      ['ok',  '[sandbox] tsc -p tsconfig.json — clean'],
+    ]},
+    { stg: 4, lines: [
+      ['warn','[sandbox] vitest: 1 failure — repairing blamed file (round 1/4)…'],
+      ['ok',  '[sandbox] tests green after repair · 3 repair rounds total'],
+    ]},
+    { stg: 5, lines: [
+      ['ok',  '[verify] gate: PASS (13 checks) — manifest, provenance, boundary, health…'],
+    ]},
+    { stg: 6, lines: [
+      ['hl',  '[register] system sys-20dd1672 registered (verify-before-register ✓)'],
+      ['hl',  '[deploy] probe /health 34ms → instance inst-dae2c274 → heartbeat recorded'],
+      ['ok',  '[done] 版权到期预警台 @ 1.0.0-demo is live'],
+    ]},
+  ];
+
+  var running = false;
+  function runPipeline() {
+    if (running) return;
+    running = true;
+    var log = $('runlog');
+    log.innerHTML = '';
+    $('to-app').classList.add('hidden');
+    var si = 0, li = 0;
+    function tick() {
+      if (si >= SCRIPT.length) {
+        $('to-app').classList.remove('hidden');
+        running = false;
+        return;
+      }
+      var stage = SCRIPT[si];
+      $('stg-' + stage.stg).className = 'stg running';
+      if (li === 0) { /* stage just lit */ }
+      var line = stage.lines[li];
+      var div = document.createElement('div');
+      div.className = line[0];
+      div.textContent = line[1];
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+      li++;
+      if (li >= stage.lines.length) {
+        $('stg-' + stage.stg).className = 'stg ok';
+        si++; li = 0;
+        setTimeout(tick, 550);
+      } else {
+        setTimeout(tick, 620);
+      }
+    }
+    setTimeout(tick, 400);
+  }
+  $('to-app').addEventListener('click', function () { goto(4); });
+
+  // Step 4: demo app data (illustrative sample, mirrors the real schema)
+  var DATA = [
+    { asset: 'asset-3301 《江城往事》EP12', exp: '2026-11-19', days: 3,  lv: 'urgent', queue: '待下架' },
+    { asset: 'asset-2874 《夜航西飞》全集', exp: '2026-11-21', days: 5,  lv: 'urgent', queue: '待续约' },
+    { asset: 'asset-4102 《南国写真集》',   exp: '2026-12-03', days: 17, lv: 'watch',  queue: '待续约' },
+    { asset: 'asset-3955 《街角电台》S02',  exp: '2026-12-10', days: 24, lv: 'watch',  queue: '待续约' },
+    { asset: 'asset-1287 《老城纪录片》',   exp: '2026-12-15', days: 29, lv: 'watch',  queue: '观察中' },
+  ];
+  function renderRows(filter) {
+    var tb = $('rows');
+    tb.innerHTML = '';
+    DATA.filter(function (r) { return filter === 'all' || r.lv === filter; })
+      .forEach(function (r) {
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + r.asset + '</td>' +
+          '<td class="mono">' + r.exp + '</td>' +
+          '<td class="days ' + r.lv + '">' + r.days + ' 天</td>' +
+          '<td><span class="lv ' + r.lv + '">' + (r.lv === 'urgent' ? '重点预警' : '观察') + '</span></td>' +
+          '<td>' + r.queue + '</td>';
+        tb.appendChild(tr);
+      });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.fbtn'), function (b) {
+    b.addEventListener('click', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.fbtn'), function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      renderRows(b.dataset.f);
+    });
+  });
+  renderRows('all');
+
+  $('restart').addEventListener('click', function () { goto(1); });
+})();
+</script>
+
+</body>
+</html>
