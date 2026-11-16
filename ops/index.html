@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DAM 运营控制台 · AI-Native DAM Ops</title>
+<meta name="description" content="AI-Native DAM 运营控制台：系统注册表、Spec 审批队列、部署实况、技能注册表 —— 本机直连网关时为实时数据，公网访问时为治理快照。">
+<style>
+  :root{--bg:#05080e;--panel:rgba(15,21,32,.78);--line:#1b2534;--line-soft:rgba(27,37,52,.6);
+    --ink:#e9eff7;--dim:#7c8aa0;--faint:#55637a;--green:#2ee59d;--amber:#f0b429;--red:#ff5c6c;
+    --blue:#4fa3ff;--violet:#9d7bff;--cyan:#38d5e8;--mono:"SFMono-Regular",Consolas,Menlo,monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);min-height:100vh;display:flex;
+    font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background-image:radial-gradient(900px 420px at 92% -6%,rgba(46,229,157,.06),transparent 62%),
+      linear-gradient(rgba(27,37,52,.3) 1px,transparent 1px),linear-gradient(90deg,rgba(27,37,52,.3) 1px,transparent 1px);
+    background-size:auto,46px 46px,46px 46px}
+  a{color:var(--blue);text-decoration:none}
+  aside{width:224px;flex:none;border-right:1px solid var(--line);background:rgba(7,12,20,.88);
+    padding:22px 14px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+  .logo{display:flex;align-items:center;gap:11px;padding:0 8px 18px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .logo .mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+    background:linear-gradient(135deg,rgba(46,229,157,.22),rgba(79,163,255,.16));
+    border:1px solid rgba(46,229,157,.42);color:var(--green);font-family:var(--mono);font-weight:700}
+  .logo .t{font-size:14px;font-weight:650}
+  .logo .t span{color:var(--green);font-family:var(--mono);font-size:9.5px;display:block;letter-spacing:.16em}
+  .nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;font-size:13px;
+    color:var(--dim);cursor:pointer;text-decoration:none}
+  .nav-item.on{background:rgba(46,229,157,.08);color:var(--green)}
+  .nav-item:hover:not(.on){color:var(--ink)}
+  .mode{margin-top:auto;font-family:var(--mono);font-size:10px;letter-spacing:.12em;border-radius:6px;
+    padding:7px 10px;text-align:center;line-height:1.6}
+  .mode.live{color:var(--green);border:1px solid rgba(46,229,157,.4)}
+  .mode.snap{color:var(--amber);border:1px solid rgba(240,180,41,.4)}
+  main{flex:1;padding:26px 34px 60px;min-width:0}
+  .top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px}
+  .top h1{font-size:20px;font-weight:650}
+  .top h1 small{font-family:var(--mono);font-size:11px;color:var(--faint);margin-left:10px}
+  .conn{font-family:var(--mono);font-size:11.5px;color:var(--dim);display:inline-flex;align-items:center;gap:7px}
+  .conn i{width:8px;height:8px;border-radius:50%;background:var(--red)}
+  .conn.ok i{background:var(--green);box-shadow:0 0 8px rgba(46,229,157,.5)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px 12px;position:relative;overflow:hidden}
+  .kpi::after{content:"";position:absolute;inset:auto 0 0 0;height:2px;background:linear-gradient(90deg,var(--kc,var(--green)),transparent)}
+  .kpi .l{font-size:10px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+  .kpi .n{font-family:var(--mono);font-size:28px;font-weight:600;color:var(--kc,var(--ink));font-variant-numeric:tabular-nums}
+  .kpi .h{font-size:10.5px;color:var(--faint);font-family:var(--mono);margin-top:2px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:18px}
+  .panel .phead{padding:14px 20px;border-bottom:1px solid var(--line);font-size:14px;font-weight:650;display:flex;justify-content:space-between;align-items:center}
+  .panel .phead span{font-family:var(--mono);font-size:10.5px;color:var(--faint);font-weight:400}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--faint);
+    font-weight:500;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:10px 14px;border-bottom:1px solid var(--line-soft);color:var(--dim)}
+  td.mono{font-family:var(--mono);font-size:11px}
+  td.strong{color:var(--ink)}
+  .st{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:4px;white-space:nowrap}
+  .st.registered,.st.deployed,.st.active,.st.approved{color:var(--green);border:1px solid rgba(46,229,157,.35);background:rgba(46,229,157,.06)}
+  .st.revoked,.st.deprecated{color:var(--faint);border:1px solid var(--line)}
+  .st.pending_approval,.st.pending{color:var(--amber);border:1px solid rgba(240,180,41,.4);background:rgba(240,180,41,.06)}
+  .empty{padding:34px;text-align:center;color:var(--faint);font-size:12.5px}
+  .view{display:none}.view.on{display:block}
+  .note{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:6px;line-height:1.8}
+  .note code{color:var(--cyan)}
+  .trial{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.trial{grid-template-columns:1fr}}
+  .tcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:block}
+  .tcard:hover{border-color:var(--faint);text-decoration:none}
+  .tcard .t{font-size:14px;font-weight:650;color:var(--ink)}
+  .tcard .d{font-size:12px;color:var(--dim);margin-top:6px;line-height:1.7}
+</style>
+</head>
+<body>
+<aside>
+  <div class="logo"><div class="mark">D</div><div class="t">DAM 运营控制台<span>AI-NATIVE DAM · OPS</span></div></div>
+  <a class="nav-item on" data-view="dash" href="#">▤ 工作台</a>
+  <a class="nav-item" data-view="systems" href="#">▦ 系统注册表</a>
+  <a class="nav-item" data-view="specs" href="#">◔ Spec 审批</a>
+  <a class="nav-item" data-view="deploy" href="#">⛁ 部署实况</a>
+  <a class="nav-item" href="/demo/">▶ 在线试用</a>
+  <a class="nav-item" href="/">⌂ 产品首页</a>
+  <div class="mode snap" id="mode">检测中…</div>
+</aside>
+<main>
+  <div class="top">
+    <h1 id="viewTitle">工作台 <small id="modeHint"></small></h1>
+    <span class="conn" id="conn"><i></i><span id="connText">连接中…</span></span>
+  </div>
+
+  <!-- 工作台 -->
+  <div class="view on" id="view-dash">
+    <div class="kpis">
+      <div class="kpi"><div class="l">注册系统</div><div class="n" id="kSys">–</div><div class="h" id="kSysH"></div></div>
+      <div class="kpi" style="--kc:var(--cyan)"><div class="l">已批准技能</div><div class="n" id="kSkill">–</div><div class="h">Skill Registry</div></div>
+      <div class="kpi" style="--kc:var(--blue)"><div class="l">在线实例</div><div class="n" id="kInst">–</div><div class="h" id="kInstH"></div></div>
+      <div class="kpi" style="--kc:var(--amber)"><div class="l">待审批 Spec</div><div class="n" id="kPend">–</div><div class="h">人类门禁</div></div>
+    </div>
+    <div class="panel">
+      <div class="phead">最近注册的系统 <span>verify-before-register · 四级溯源</span></div>
+      <div id="dashRecent"><div class="empty">加载中…</div></div>
+    </div>
+    <div class="panel">
+      <div class="phead">部署健康 <span>实例 × 目标 · 心跳</span></div>
+      <div id="dashDeploy"><div class="empty">加载中…</div></div>
+    </div>
+  </div>
+
+  <!-- 系统注册表 -->
+  <div class="view" id="view-systems">
+    <div class="panel">
+      <div class="phead">系统注册表 <span id="sysCount"></span></div>
+      <div id="systemsTable"><div class="empty">加载中…</div></div>
+    </div>
+  </div>
+
+  <!-- Spec 审批 -->
+  <div class="view" id="view-specs">
+    <div class="panel">
+      <div class="phead">待审批队列 <span>写操作走两段式审批闸门</span></div>
+      <div id="specPending"><div class="empty">加载中…</div></div>
+    </div>
+    <div class="panel">
+      <div class="phead">最近的 Spec <span id="specCount"></span></div>
+      <div id="specRecent"><div class="empty">加载中…</div></div>
+    </div>
+    <p class="note">审批操作需要 Edit 级令牌，在本机网关（<code>http://127.0.0.1:8080</code>）上由授权审批人执行；此控制台为只读视图。</p>
+  </div>
+
+  <!-- 部署实况 -->
+  <div class="view" id="view-deploy">
+    <div class="panel">
+      <div class="phead">部署目标 <span id="tgtCount"></span></div>
+      <div id="tgtTable"><div class="empty">加载中…</div></div>
+    </div>
+    <div class="panel">
+      <div class="phead">运行实例 <span id="instCount"></span></div>
+      <div id="instTable"><div class="empty">加载中…</div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  // Same-origin /api/overview: locally the dev server proxies the live
+  // gateway (X-DAM-Mode: live); on Cloudflare Pages the Pages Function
+  // serves the committed governance snapshot.
+  var OVERVIEW = '/api/overview';
+  var TITLES = { dash:'工作台', systems:'系统注册表', specs:'Spec 审批', deploy:'部署实况' };
+  function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+  function arr(x){ return Array.isArray(x) ? x : (x && Array.isArray(x.list) ? x.list : []); }
+  function st(s){ return '<span class="st ' + esc(s) + '">' + esc(s) + '</span>'; }
+  function ago(iso){
+    if(!iso) return '—';
+    var m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
+    return m < 1 ? '刚刚' : m < 60 ? m + ' 分钟前' : m < 1440 ? Math.round(m/60) + ' 小时前' : Math.round(m/1440) + ' 天前';
+  }
+  function table(head, rows){
+    if(!rows.length) return '<div class="empty">暂无数据</div>';
+    return '<table><thead><tr>' + head.map(function(h){return '<th>'+esc(h)+'</th>';}).join('') + '</tr></thead><tbody>' +
+      rows.map(function(r){ return '<tr>' + r.map(function(c){return '<td>'+c+'</td>';}).join('') + '</tr>'; }).join('') +
+      '</tbody></table>';
+  }
+
+  async function loadOverview(){
+    var r = await fetch(OVERVIEW);
+    if (!r.ok) throw new Error('overview ' + r.status);
+    return { data: await r.json(), live: r.headers.get('X-DAM-Mode') === 'live' };
+  }
+
+  function render(d, live){
+    var systems = arr(d.systems);
+    var specs = d.specs || {};
+    var pending = arr(specs.pending_approval);
+    var specList = arr(specs.list || specs.recent);
+    var targets = (d.deployments && d.deployments.targets) || {};
+    var instances = (d.deployments && d.deployments.instances) || {};
+    var tgtList = arr(targets);
+    var instRecent = arr(instances.recent);
+    var deployed = (instances.by_status && instances.by_status.deployed) || 0;
+
+    document.getElementById('kSys').textContent = systems.length;
+    document.getElementById('kSysH').textContent = 'registered';
+    document.getElementById('kSkill').textContent = (d.skills && d.skills.total) || 0;
+    document.getElementById('kInst').textContent = deployed;
+    document.getElementById('kInstH').textContent = '/ ' + (instances.total || 0) + ' 实例';
+    document.getElementById('kPend').textContent = pending.length;
+
+    document.getElementById('dashRecent').innerHTML = table(['系统','版本','状态','注册时间'],
+      systems.slice(-6).reverse().map(function(s){
+        return ['<span style="color:var(--ink)">'+esc(s.name)+'</span>', esc(s.version), st(s.status), ago(s.created_at)];
+      }));
+    document.getElementById('dashDeploy').innerHTML = table(['实例','版本','状态','最近心跳'],
+      instRecent.slice(0,6).map(function(i){ return [esc(i.id.slice(0,13))+'…', esc(i.version), st(i.status), ago(i.last_health_at)]; }));
+
+    document.getElementById('sysCount').textContent = systems.length + ' 个系统';
+    document.getElementById('systemsTable').innerHTML = table(['ID','系统','版本','状态','溯源 Spec'],
+      systems.map(function(s){ return [esc(s.id), '<span style="color:var(--ink)">'+esc(s.name)+'</span>', esc(s.version), st(s.status), '<span class="mono" style="font-size:11px">'+esc((s.source_spec_id||'—').slice(0,18))+'</span>']; }));
+
+    document.getElementById('specPending').innerHTML = pending.length
+      ? table(['Spec','状态','提交时间'], pending.map(function(p){ return ['<span style="color:var(--ink)">'+esc(p.title||p.id)+'</span>', st(p.status||'pending_approval'), ago(p.created_at)]; }))
+      : '<div class="empty">队列已清空 —— 所有 Spec 都已裁决</div>';
+    document.getElementById('specCount').textContent = (specs.total||specList.length) + ' 份规格';
+    document.getElementById('specRecent').innerHTML = table(['Spec','状态','时间'],
+      specList.slice(0,8).map(function(p){ return ['<span style="color:var(--ink)">'+esc(p.title||p.id)+'</span>', st(p.status), ago(p.created_at)]; }));
+
+    document.getElementById('tgtCount').textContent = (targets.total||tgtList.length) + ' 个目标';
+    document.getElementById('tgtTable').innerHTML = table(['目标','类型','区域','状态'],
+      tgtList.map(function(t){ return ['<span style="color:var(--ink)">'+esc(t.name)+'</span>', esc(t.kind), esc(t.region||'—'), st(t.status)]; }));
+    document.getElementById('instCount').textContent = (instances.total||instRecent.length) + ' 个实例';
+    document.getElementById('instTable').innerHTML = table(['实例','系统','版本','状态','最近心跳'],
+      instRecent.map(function(i){ return [esc(i.id.slice(0,13))+'…', '<span class="mono" style="font-size:11px">'+esc((i.system_id||'').slice(0,13))+'…</span>', esc(i.version), st(i.status), ago(i.last_health_at)]; }));
+  }
+
+  async function boot(){
+    try{
+      var r = await loadOverview();
+      var mode = document.getElementById('mode');
+      var conn = document.getElementById('conn');
+      if (r.live){
+        mode.className = 'mode live';
+        mode.innerHTML = '● LIVE · 直连本机网关';
+        conn.className = 'conn ok';
+        document.getElementById('connText').textContent = '实时 · 127.0.0.1:8080';
+        document.getElementById('modeHint').textContent = '实时数据';
+      } else {
+        mode.className = 'mode snap';
+        mode.innerHTML = '◷ 快照 · ' + (r.data.generated_at||'').slice(0,16).replace('T',' ') + 'Z';
+        document.getElementById('connText').textContent = '公开快照';
+        document.getElementById('modeHint').textContent = '公开治理快照（本机运行网关时自动切换实时模式）';
+      }
+      render(r.data, r.live);
+    }catch(e){
+      document.getElementById('connText').textContent = '数据不可用';
+      document.getElementById('mode').textContent = 'OFFLINE';
+    }
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.nav-item[data-view]'), function(a){
+    a.addEventListener('click', function(ev){
+      ev.preventDefault();
+      Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function(x){ x.classList.remove('on'); });
+      a.classList.add('on');
+      var v = a.dataset.view;
+      Array.prototype.forEach.call(document.querySelectorAll('.view'), function(x){ x.classList.remove('on'); });
+      document.getElementById('view-' + v).classList.add('on');
+      document.getElementById('viewTitle').firstChild.textContent = TITLES[v] + ' ';
+    });
+  });
+
+  boot();
+  setInterval(boot, 60000);
+})();
+</script>
+</body>
+</html>

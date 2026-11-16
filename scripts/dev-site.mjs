@@ -41,6 +41,34 @@ createServer(async (req, res) => {
       res.end(body);
       return;
     }
+    // Same-origin governance overview: proxy the live gateway with the
+    // Read-scoped token (token stays server-side); fall back to the
+    // committed snapshot when the gateway is not running locally.
+    if (path === '/api/overview' || path === '/api/overview/') {
+      let liveBody = null;
+      try {
+        const tokenMap = JSON.parse(await readFile(join(process.cwd(), '.review/service/gateway-token.json'), 'utf8'));
+        const token = Object.entries(tokenMap).find(([, e]) => Array.isArray(e?.scopes) && e.scopes.includes('Read'))?.[0];
+        if (token) {
+          const ctl = new AbortController();
+          const t = setTimeout(() => ctl.abort(), 2500);
+          const up = await fetch('http://127.0.0.1:8080/overview', {
+            headers: { Authorization: `Bearer ${token}` }, signal: ctl.signal,
+          });
+          clearTimeout(t);
+          if (up.ok) liveBody = await up.text();
+        }
+      } catch { /* fall through to snapshot */ }
+      if (liveBody != null) {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'X-DAM-Mode': 'live' });
+        res.end(liveBody);
+        return;
+      }
+      const snap = await readFile(join(process.cwd(), 'functions/data/overview.json'), 'utf8');
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'X-DAM-Mode': 'snapshot' });
+      res.end(snap);
+      return;
+    }
     if (path.endsWith('/')) path += 'index.html';
     const file = normalize(join(process.cwd(), path));
     if (!file.startsWith(process.cwd())) throw Object.assign(new Error('forbidden'), { code: 403 });
