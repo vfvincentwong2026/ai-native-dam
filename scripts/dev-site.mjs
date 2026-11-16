@@ -32,6 +32,15 @@ const MIME = {
 createServer(async (req, res) => {
   try {
     let path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);
+    // Same-origin proxy so the console UI can reach the locally running
+    // generated system without CORS changes to the deterministic server.
+    if (path.startsWith('/api/sys/')) {
+      const upstream = await fetch(`http://localhost:3000${path.slice('/api/sys'.length)}`);
+      const body = await upstream.text();
+      res.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') ?? 'application/json' });
+      res.end(body);
+      return;
+    }
     if (path.endsWith('/')) path += 'index.html';
     const file = normalize(join(process.cwd(), path));
     if (!file.startsWith(process.cwd())) throw Object.assign(new Error('forbidden'), { code: 403 });

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>版权到期预警台 · 管理控制台</title>
+<style>
+  :root {
+    --bg: #05080e; --panel: rgba(15,21,32,.78); --line: #1b2534; --line-soft: rgba(27,37,52,.6);
+    --ink: #e9eff7; --dim: #7c8aa0; --faint: #55637a;
+    --green: #2ee59d; --amber: #f0b429; --red: #ff5c6c; --blue: #4fa3ff; --cyan: #38d5e8;
+    --mono: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink); min-height: 100vh;
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex;
+  }
+  /* sidebar */
+  aside {
+    width: 218px; flex: none; border-right: 1px solid var(--line);
+    background: rgba(7,12,20,.85); padding: 22px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .logo { display: flex; align-items: center; gap: 11px; padding: 0 8px 20px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+  .logo .mark {
+    width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+    background: linear-gradient(135deg, rgba(46,229,157,.22), rgba(79,163,255,.16));
+    border: 1px solid rgba(46,229,157,.42); color: var(--green);
+    font-family: var(--mono); font-weight: 700; font-size: 13px;
+  }
+  .logo .t { font-size: 14px; font-weight: 650; }
+  .logo .t span { color: var(--green); font-family: var(--mono); font-size: 10px; display: block; letter-spacing: .14em; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
+    font-size: 13px; color: var(--dim); cursor: pointer; text-decoration: none;
+  }
+  .nav-item.on { background: rgba(46,229,157,.08); color: var(--green); }
+  .nav-item:hover:not(.on) { color: var(--ink); }
+  .demo-badge {
+    margin-top: auto; font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em;
+    color: var(--amber); border: 1px solid rgba(240,180,41,.4); border-radius: 6px;
+    padding: 6px 10px; text-align: center;
+  }
+  /* main */
+  main { flex: 1; padding: 26px 34px 60px; min-width: 0; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+  .topbar h1 { font-size: 20px; font-weight: 650; }
+  .topbar h1 small { font-family: var(--mono); font-size: 11px; color: var(--faint); margin-left: 10px; }
+  .conn { font-family: var(--mono); font-size: 11.5px; display: inline-flex; align-items: center; gap: 7px; color: var(--dim); }
+  .conn i { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+  .conn.ok i { background: var(--green); box-shadow: 0 0 8px rgba(46,229,157,.5); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; margin-bottom: 22px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; position: relative; overflow: hidden; }
+  .kpi::after { content: ""; position: absolute; inset: auto 0 0 0; height: 2px; background: linear-gradient(90deg, var(--kc, var(--green)), transparent); }
+  .kpi .l { font-size: 10.5px; letter-spacing: .16em; color: var(--dim); text-transform: uppercase; }
+  .kpi .n { font-family: var(--mono); font-size: 30px; font-weight: 600; color: var(--kc, var(--ink)); font-variant-numeric: tabular-nums; }
+  .filters { display: flex; gap: 8px; margin-bottom: 14px; }
+  .fbtn { font-family: var(--mono); font-size: 11.5px; cursor: pointer; border: 1px solid var(--line); border-radius: 6px; padding: 5px 13px; background: transparent; color: var(--dim); }
+  .fbtn.on { border-color: rgba(46,229,157,.5); color: var(--green); background: rgba(46,229,157,.06); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; color: var(--faint); font-weight: 500; text-transform: uppercase; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); color: var(--dim); }
+  td.mono { font-family: var(--mono); font-size: 12px; }
+  td.asset { color: var(--ink); }
+  .lv { font-family: var(--mono); font-size: 10.5px; padding: 2px 9px; border-radius: 4px; }
+  .lv.urgent { color: var(--red); border: 1px solid rgba(255,92,108,.4); background: rgba(255,92,108,.07); }
+  .lv.watch { color: var(--amber); border: 1px solid rgba(240,180,41,.4); background: rgba(240,180,41,.07); }
+  .days { font-family: var(--mono); font-weight: 600; }
+  .days.urgent { color: var(--red); } .days.watch { color: var(--amber); }
+  .empty { padding: 40px; text-align: center; color: var(--faint); font-size: 13px; }
+  .offline { padding: 46px 30px; text-align: center; }
+  .offline h3 { color: var(--amber); font-size: 15px; margin-bottom: 10px; }
+  .offline p { color: var(--dim); font-size: 13px; line-height: 1.8; }
+  .offline code { font-family: var(--mono); font-size: 12px; color: var(--cyan); background: rgba(56,213,232,.08); padding: 1px 6px; border-radius: 4px; }
+  .foot { margin-top: 18px; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+  .foot code { color: var(--cyan); }
+</style>
+</head>
+<body>
+<aside>
+  <div class="logo">
+    <div class="mark">D</div>
+    <div class="t">版权到期预警台<span>AI-NATIVE DAM · GENERATED</span></div>
+  </div>
+  <a class="nav-item on" href="#">⚠ 预警清单</a>
+  <a class="nav-item" href="#" onclick="return false" style="opacity:.45">↻ 工作流（即将上线）</a>
+  <a class="nav-item" href="#" onclick="return false" style="opacity:.45">◈ 处置回填（即将上线）</a>
+  <a class="nav-item" href="/governance/" target="_blank">📊 治理大屏</a>
+  <div class="demo-badge">DEMO · 演示档案</div>
+</aside>
+<main>
+  <div class="topbar">
+    <h1>预警清单 <small>sys-20dd1672 · v0.5.1 · inst-dae2c274</small></h1>
+    <span class="conn" id="conn"><i></i><span id="connText">连接中…</span></span>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="l">预警总数</div><div class="n" id="kTotal">–</div></div>
+    <div class="kpi" style="--kc:var(--red)"><div class="l">重点预警</div><div class="n" id="kUrgent">–</div></div>
+    <div class="kpi" style="--kc:var(--amber)"><div class="l">观察清单</div><div class="n" id="kWatch">–</div></div>
+    <div class="kpi" style="--kc:var(--cyan)"><div class="l">最近心跳</div><div class="n" id="kPing" style="font-size:15px; padding-top:8px">–</div></div>
+  </div>
+  <div class="filters">
+    <button class="fbtn on" data-f="all">全部</button>
+    <button class="fbtn" data-f="urgent">重点预警</button>
+    <button class="fbtn" data-f="watch">观察清单</button>
+  </div>
+  <div class="panel" id="panel"><div class="empty">加载中…</div></div>
+  <div class="foot">数据源：<code>GET /license-alerts</code> · 本机生成的真实系统（localhost:3000）· 每 30s 自动刷新 · 演示数据为虚构样本</div>
+</main>
+<script>
+(function () {
+  var API = '/api/sys/license-alerts';
+  var HEALTH = '/api/sys/health';
+  var filter = 'all';
+  var rows = [];
+
+  function daysLeft(iso) {
+    return Math.max(0, Math.ceil((new Date(iso) - Date.now()) / 86400000));
+  }
+  function render() {
+    var el = document.getElementById('panel');
+    var list = rows.filter(function (r) { return filter === 'all' || r.alertLevel === filter; });
+    document.getElementById('kTotal').textContent = rows.length;
+    document.getElementById('kUrgent').textContent = rows.filter(function (r) { return r.alertLevel === 'urgent'; }).length;
+    document.getElementById('kWatch').textContent = rows.filter(function (r) { return r.alertLevel === 'watch'; }).length;
+    if (!list.length) { el.innerHTML = '<div class="empty">该分类下暂无预警</div>'; return; }
+    var html = '<table><thead><tr><th>预警 ID</th><th>素材</th><th>到期日</th><th>剩余</th><th>级别</th></tr></thead><tbody>';
+    list.forEach(function (r) {
+      var d = daysLeft(r.expiresAt);
+      html += '<tr><td class="mono">' + r.id + '</td><td class="asset">' + r.assetId + '</td>' +
+        '<td class="mono">' + String(r.expiresAt).slice(0, 10) + '</td>' +
+        '<td class="days ' + r.alertLevel + '">' + d + ' 天</td>' +
+        '<td><span class="lv ' + r.alertLevel + '">' + (r.alertLevel === 'urgent' ? '重点预警' : '观察') + '</span></td></tr>';
+    });
+    el.innerHTML = html + '</tbody></table>';
+  }
+  function setConn(ok, text) {
+    var c = document.getElementById('conn');
+    c.className = 'conn' + (ok ? ' ok' : '');
+    document.getElementById('connText').textContent = text;
+  }
+  async function poll() {
+    try {
+      var h = await fetch(HEALTH);
+      if (!h.ok) throw new Error('health ' + h.status);
+      setConn(true, '系统在线 · localhost:3000');
+      document.getElementById('kPing').textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+      var r = await fetch(API);
+      rows = await r.json();
+      render();
+    } catch (e) {
+      setConn(false, '离线');
+      document.getElementById('panel').innerHTML =
+        '<div class="offline"><h3>⚠ 连不上本机的预警台服务</h3>' +
+        '<p>这个控制台是「内部管理系统」，数据来自你本机运行的生成系统。<br>' +
+        '启动它：<code>cd .dam-runs\\run-1fb26b0c-9058-4ea0-9b1b-60937e360435</code> 然后 <code>node src\\server.ts</code></p></div>';
+    }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.fbtn'), function (b) {
+    b.addEventListener('click', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.fbtn'), function (x) { x.classList.remove('on'); });
+      b.classList.add('on'); filter = b.dataset.f; render();
+    });
+  });
+  poll();
+  setInterval(poll, 30000);
+})();
+</script>
+</body>
+</html>
